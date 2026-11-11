@@ -1,0 +1,59 @@
+# ---------------------------------------------------------------------------
+# v2: the only file a user edits is config/preferences.yaml, and it is private.
+# ---------------------------------------------------------------------------
+config/preferences.yaml
+config/preferences.before-*.yaml
+config/answers.yaml
+config/background.md
+config/resumes/
+data/
+
+# credentials / login state: never commit
+secrets/
+.env
+*.env
+!*.env.example
+auth.json
+*token*.json
+*oauth-client*.json
+*-password.txt
+otp*.txt
+cookies*
+*.cookies
+
+# browser state
+chrome-profile*/
+browser-profiles/
+
+# tracker data and run output
+applications.json
+applications.json.*
+oa-interviews.json
+logs/
+runs/
+results/
+*.log
+*.jsonl
+!tests/fixtures/**/*.jsonl
+
+# documents / media
+*.pdf
+*.tex
+*.png
+*.jpg
+*.webm
+*.mp4
+
+# tooling
+venv/
+.venv/
+node_modules/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+build/
+dist/
+
+# ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------

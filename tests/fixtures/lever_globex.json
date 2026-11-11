@@ -1,0 +1,28 @@
+[
+  {
+    "id": "7f3a1c20-0000-4000-8000-000000000001",
+    "text": "Software Engineer, New Grad",
+    "hostedUrl": "https://jobs.lever.co/globex-systems/7f3a1c20-0000-4000-8000-000000000001",
+    "applyUrl": "https://jobs.lever.co/globex-systems/7f3a1c20-0000-4000-8000-000000000001/apply",
+    "companyName": "Globex Systems",
+    "createdAt": 1794096000000,
+    "categories": { "location": "Remote (US)", "commitment": "Full-time" },
+    "descriptionPlain": "Globex Systems is hiring new graduates to work on our billing platform.",
+    "lists": [
+      {
+        "text": "What we look for",
+        "content": "<ul><li>A degree in computer science or similar</li><li>Up to 2 years of experience</li></ul>"
+      }
+    ],
+    "additionalPlain": "Globex Systems is an equal opportunity employer."
+  },
+  {
+    "id": "7f3a1c20-0000-4000-8000-000000000002",
+    "text": "Technician, Field Operations",
+    "hostedUrl": "https://jobs.lever.co/globex-systems/7f3a1c20-0000-4000-8000-000000000002",
+    "companyName": "Globex Systems",
+    "createdAt": 1793836800000,
+    "categories": { "location": "Dublin, Ireland" },
+    "descriptionPlain": "Applicants must reside in Ireland and hold a valid work permit for the EU."
+  }
+]

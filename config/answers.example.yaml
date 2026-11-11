@@ -1,0 +1,45 @@
+# ---------------------------------------------------------------------------
+# answers.yaml — your answer bank.
+#
+# The assistant answers a form question ONLY from this file. If a question is
+# not here, it stops on that application and asks you; it never guesses.
+#
+# `match` is a list of words/phrases that may appear in the question. A question
+# matches an entry when every phrase in one of its `match` lines appears in the
+# question (case-insensitive).
+# ---------------------------------------------------------------------------
+
+answers:
+  - id: work_authorization
+    match: ["authorized to work"]
+    answer: "Yes"
+
+  - id: needs_sponsorship
+    match: ["sponsorship"]
+    answer: "Yes"
+
+  - id: relocate
+    match: ["willing to relocate"]
+    answer: "Yes"
+
+  - id: start_date
+    match: ["earliest start", "start date"]
+    answer: "{{YYYY-MM-DD}}"
+
+  - id: how_did_you_hear
+    match: ["how did you hear"]
+    # The real source of each job is recorded on the row, so this answer is
+    # truthful. Never replace it with a guess.
+    answer: "Company careers page"
+
+  - id: salary_expectation
+    match: ["salary expectation", "compensation expectation"]
+    answer: "Open, and happy to discuss the range for this role."
+
+# Questions that must ALWAYS stop and wait for you, even if something above
+# would match. Personal identifiers are never answered automatically.
+always_ask:
+  - "social security"
+  - "date of birth"
+  - "driver's license number"
+  - "passport number"

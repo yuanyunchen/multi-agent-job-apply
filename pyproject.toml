@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "jobpilot"
+version = "2.0.0a1"
+description = "A multi-agent job-application assistant: finds jobs, screens them with quoted evidence, applies through pluggable drivers, and reports in plain language."
+readme = "docs/ARCHITECTURE.md"
+requires-python = ">=3.11"
+license = { file = "LICENSE" }
+dependencies = ["PyYAML>=6.0"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[project.scripts]
+jobpilot = "jobpilot.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["jobpilot*"]
+
+[tool.setuptools.package-data]
+"jobpilot.plugins" = ["*/plugin.yaml", "*/*.md"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = ["error"]

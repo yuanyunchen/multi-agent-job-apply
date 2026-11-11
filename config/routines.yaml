@@ -1,0 +1,45 @@
+# ---------------------------------------------------------------------------
+# routines.yaml — what runs by itself, and when.
+#
+# Each entry is declarative: a name, a schedule, what it does, and a
+# plain-language description. `jobpilot status` reads the descriptions back to
+# you ("Every weekday at 8am you get one email"), so keep them in your words.
+#
+# Times are local to timing.timezone in preferences.yaml.
+# ---------------------------------------------------------------------------
+
+routines:
+  - name: find_jobs
+    schedule: { at: "07:30", days: daily }
+    what: search.daily_pass
+    description: "Every morning I look for new jobs that match what you asked for."
+
+  - name: read_jobs
+    schedule: { at: "08:15", days: daily }
+    what: screen.pass
+    description: "Right after that I read each new job description and decide whether it is worth applying to."
+
+  - name: apply
+    schedule: { window: "09:30-18:00", days: mon-fri }
+    what: apply.waves
+    description: "On weekdays between half past nine and six I work through the list and fill in applications."
+
+  - name: daily_email
+    schedule: { at: "08:00", days: mon-fri }
+    what: report.digest
+    description: "Every weekday at 8am you get one email with what I did and anything that needs you."
+
+  - name: check_receipts
+    schedule: { at: "18:00", days: daily }
+    what: verify.receipt_sweep
+    description: "Each evening I check your mailbox for confirmations, so we know which applications really arrived."
+
+  - name: look_back
+    schedule: { at: "18:30", days: daily }
+    what: report.reflection
+    description: "At the end of the day I write down how it went and what I could do better."
+
+  - name: suggestions
+    schedule: { at: "10:00", days: mon }
+    what: lead.proposals
+    description: "Once a week, on Monday morning, I bring you suggestions. I never change your settings without asking."

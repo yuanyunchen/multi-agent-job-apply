@@ -1,0 +1,53 @@
+name: yc
+kind: outreach
+version: 1
+summary: "Keeps your startup-list profile visible and applies to matching startups with a short note, up to a weekly limit."
+explain: |
+  Checks that your profile still shows you as looking, finds startups that match
+  what you asked for, and sends an application inside that platform with a short,
+  truthful note — never more than the weekly number you choose. It replies to
+  founders who write back. It never edits your profile text without asking,
+  never goes over the weekly limit, never messages anyone outside the platform,
+  and never attaches your resume unless a founder asks for it. Every note is
+  checked before it is sent, and a blocked note is dropped rather than reworded.
+requires:
+  logins:
+    - id: startup_list
+      label: "Startup jobs platform account"
+      how: browser_session
+      your_part: "signing in to the startup jobs platform, in your own browser"
+      sentence: "It needs you to be signed in to the startup jobs platform in your own browser."
+      verify: "opening your profile and telling you whether it shows you as looking"
+      never:
+        - "edit your profile text without asking"
+        - "go over the weekly limit"
+        - "sign you in or out"
+        - "attach your resume unless a founder asks"
+  providers: [browser]
+defaults:
+  weekly_application_cap: 10
+  week_resets: monday
+  note_limit: 500
+  skip_companies: []
+routines:
+  - id: cycle
+    schedule: { window: "18:00-22:00", days: daily }
+    action: cycle
+    description: "Every evening I look at the startup list and, up to your weekly limit, apply with a short note."
+  - id: stats
+    schedule: { at: "21:55", days: daily }
+    action: stats
+    description: "I tell you how many startup applications are left in this week's allowance."
+user_prompts:
+  - key: weekly_application_cap
+    question: "How many startup applications a week?"
+    default: 10
+    explain: "The platform limits these, and the allowance starts again every Monday."
+    type: integer
+gates: [outbound_gate, text_rules, weekly_cap, pause_file]
+writes: [plugin_state, runlog, tracker_rows]
+metrics: [applications_sent, cap_remaining, founder_replies]
+caps: { weekly_application: 10 }
+outbound_actions: [send_outreach_messages, submit_applications]
+health: health
+enabled_default: false

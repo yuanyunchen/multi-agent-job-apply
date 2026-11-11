@@ -1,0 +1,53 @@
+name: handshake
+kind: outreach
+version: 1
+summary: "Uses your school's job platform: finds school-only postings, follows employers, and notes career events."
+explain: |
+  Runs in the evening. It searches the school view of the jobs board for roles
+  that match what you asked for, including postings only students at your school
+  can see, follows employers you care about, and records career events. It never
+  clicks Apply, never submits an external form, never edits your profile or your
+  documents, and never signs in or out. School-only postings it finds go through
+  exactly the same reading and checking as every other job. If it is allowed to
+  reply to recruiters, every reply is checked before it is sent, and a blocked
+  reply is dropped rather than reworded.
+requires:
+  logins:
+    - id: school_platform
+      label: "Your school's job platform"
+      how: browser_session
+      your_part: "signing in to your school's job platform, in your own browser"
+      sentence: "It needs you to be signed in to your school's job platform in your own browser."
+      verify: "opening the jobs page and telling you which account it sees"
+      never:
+        - "apply or submit anything"
+        - "edit your profile or your documents"
+        - "sign you in or out"
+        - "ask for another verification email"
+  providers: [browser]
+defaults:
+  school_name: ""
+  reply_to_recruiters: false
+  note_events: true
+  search_terms: []
+routines:
+  - id: cycle
+    schedule: { window: "18:00-22:00", days: daily }
+    action: cycle
+    description: "Every evening I check your school's job platform for postings only you can see."
+user_prompts:
+  - key: school_name
+    question: "Which school's platform should I use?"
+    default: null
+    type: string
+  - key: reply_to_recruiters
+    question: "May I reply to recruiters who message you there?"
+    default: false
+    explain: "Every reply is checked before it is sent, and you can read them all afterwards."
+    type: boolean
+gates: [outbound_gate, text_rules, pause_file]
+writes: [plugin_state, runlog, tracker_rows]
+metrics: [leads_found, school_only_leads, events_noted, recruiter_replies]
+outbound_actions: [send_outreach_messages]
+health: health
+enabled_default: false

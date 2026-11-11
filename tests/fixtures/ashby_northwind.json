@@ -1,0 +1,35 @@
+{
+  "jobs": [
+    {
+      "id": "nw-9001",
+      "title": "Applied Scientist, Forecasting",
+      "jobUrl": "https://jobs.ashbyhq.com/northwind-analytics/nw-9001",
+      "applyUrl": "https://jobs.ashbyhq.com/northwind-analytics/nw-9001/application",
+      "organizationName": "Northwind Analytics",
+      "location": "New York, NY",
+      "isRemote": false,
+      "isListed": true,
+      "publishedAt": "2026-11-07T15:00:00+00:00",
+      "descriptionPlain": "Northwind Analytics forecasts demand for utilities. A PhD is required for this role."
+    },
+    {
+      "id": "nw-9002",
+      "title": "Machine Learning Engineer",
+      "jobUrl": "https://jobs.ashbyhq.com/northwind-analytics/nw-9002",
+      "organizationName": "Northwind Analytics",
+      "location": "Remote",
+      "isRemote": true,
+      "isListed": true,
+      "publishedAt": "2026-11-09T11:00:00+00:00",
+      "descriptionHtml": "<p>Work on our forecasting models.</p><p>An active secret clearance is required.</p>"
+    },
+    {
+      "id": "nw-9003",
+      "title": "Machine Learning Engineer, Internal",
+      "jobUrl": "https://jobs.ashbyhq.com/northwind-analytics/nw-9003",
+      "organizationName": "Northwind Analytics",
+      "isListed": false,
+      "descriptionPlain": "Internal transfers only."
+    }
+  ]
+}

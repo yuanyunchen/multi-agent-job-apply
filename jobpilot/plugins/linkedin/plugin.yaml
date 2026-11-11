@@ -1,0 +1,57 @@
+name: linkedin
+kind: outreach
+version: 1
+summary: "Get noticed on LinkedIn: sends connection requests and writes short, relevant comments."
+explain: |
+  Runs in the evening. It finds hiring posts and people working in the areas you
+  care about, sends connection requests with a short note, and comments on posts
+  where a comment makes sense. It never sends direct messages, never reads your
+  inbox, never posts anything other than those comments, never edits your
+  profile, and stops immediately if LinkedIn shows a warning, a check, or a
+  limit. Every message is checked before it is sent, and a blocked message is
+  dropped rather than reworded.
+requires:
+  logins:
+    - id: linkedin
+      label: "LinkedIn"
+      how: browser_session
+      your_part: "signing in to LinkedIn, in your own browser"
+      sentence: "It needs you to be signed in to LinkedIn in your own browser."
+      verify: "opening your feed without changing anything and telling you the account name it sees"
+      never:
+        - "sign you in or out"
+        - "change your password"
+        - "edit your profile"
+        - "read or send direct messages"
+  providers: [browser]
+defaults:
+  scope: [connect, comment]
+  weekly_connect_cap: 90
+  per_cycle_connect_cap: 12
+  connect_note_limit: 199
+  comments_per_cycle: 4
+  search_terms: []
+  excluded_companies: []
+routines:
+  - id: cycle
+    schedule: { window: "18:00-22:00", days: daily }
+    action: cycle
+    description: "Every evening I spend a little time making you more visible on LinkedIn."
+user_prompts:
+  - key: scope
+    question: "Should it also comment on posts, or only send connection requests?"
+    default: [connect, comment]
+    explain: "Comments get more recruiter replies, but your network sees them."
+    type: multiselect
+  - key: weekly_connect_cap
+    question: "How many connection requests a week feel comfortable?"
+    default: 90
+    explain: "LinkedIn has its own weekly ceiling; staying under it avoids a restriction."
+    type: integer
+gates: [outbound_gate, text_rules, per_company_cap, pause_file]
+writes: [plugin_state, runlog, tracker_rows]
+metrics: [connects_sent, comments_posted, replies_received, gate_rejections]
+caps: { weekly_connect: 90, per_cycle_connect: 12 }
+outbound_actions: [send_outreach_messages, post_public_comments]
+health: health
+enabled_default: false
