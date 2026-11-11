@@ -24,7 +24,7 @@ describe: plain words, one question at a time, a sensible default every time.
 8. [If a step fails](#if-a-step-fails)
 9. [For contributors](#for-contributors)
 
-Use **only** the commands shown here; they all exist in `jobpilot/cli.py`. Every
+Use **only** the commands shown here; they all exist in `src/jobpilot/cli.py`. Every
 command prints plain language by default and sends nothing unless the settings
 allow it. Never invent a flag.
 
@@ -32,7 +32,7 @@ allow it. Never invent a flag.
 
 ## 1. Install and check
 
-Run these in order. Python **3.11 or newer** is required.
+Run these in order. Python **3.10 or newer** is required.
 
 ```bash
 git clone https://github.com/yuanyunchen/multi-agent-job-apply
@@ -91,7 +91,7 @@ your host play it; the shared rules live in [`agents/README.md`](agents/README.m
 - If it is **one agent**, play the roles in turn, but keep the boundary: speak
   to the user only as the Lead, and keep Search/Apply/Mail reasoning internal.
 
-**The schedule** is declarative in [`config/routines.yaml`](config/routines.yaml)
+**The schedule** is declarative in [`routines/routines.yaml`](routines/routines.yaml)
 (find jobs, read them, apply on weekdays, a daily email, check receipts, reflect,
 weekly suggestions). You do not hand-build it:
 
@@ -105,7 +105,7 @@ which is why it is safe from cron. The single cron line is shown by
 `jobpilot routines list --technical` (`*/10 * * * *` calling `routines run-due`).
 
 **Optional plugins** (`linkedin`, `handshake`, `yc`) add more sources and
-outreach; each ships its own browser prompt at `jobpilot/plugins/<name>/agent.md`.
+outreach; each ships its own browser prompt at `src/jobpilot/plugins/<name>/agent.md`.
 **Optional model providers** are `claude`, `codex`, `openai_compatible`, `fake`.
 All plugins and all providers except `claude` are **off** until the user turns
 them on during setup. Do not enable any of them on your own.

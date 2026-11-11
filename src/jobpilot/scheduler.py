@@ -4,7 +4,7 @@
 records when each one last ran. It is **idempotent**: calling it again straight
 away does nothing, so it is safe to call every few minutes.
 
-The schedule shapes in ``config/routines.yaml``:
+The schedule shapes in ``routines/routines.yaml``:
 
 * ``at: "08:00"`` with ``days:`` — once on each matching day, at or after that time;
 * ``window: "09:30-18:00"`` — repeatedly while inside the window, at most once
@@ -270,7 +270,7 @@ def action_proposals(config: Config, renderer: Renderer) -> str:
     return render_proposals(items)
 
 
-#: Routine name in ``config/routines.yaml`` → what it does.
+#: Routine name in ``routines/routines.yaml`` → what it does.
 ACTIONS: dict[str, Callable[[Config, Renderer], str]] = {
     "search.daily_pass": action_search,
     "screen.pass": action_screen,

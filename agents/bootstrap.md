@@ -54,8 +54,8 @@ anything is missing, explain it in one sentence and how to fix it. Do not
 continue until `doctor` is happy or the person decides to continue anyway.
 
 **Step 2 — Read what is installed.** Read `docs/ARCHITECTURE.md`,
-`agents/README.md`, every `jobpilot/plugins/*/plugin.yaml`, and
-`config/routines.yaml`. Then run `jobpilot start --explain-only`: that prints the
+`agents/README.md`, every `src/jobpilot/plugins/*/plugin.yaml`, and
+`routines/routines.yaml`. Then run `jobpilot start --explain-only`: that prints the
 team, the timetable and the promises, generated from what is actually installed.
 Use *that* output when you explain the system, not your own memory of it — then
 what you say cannot drift from what is really there.

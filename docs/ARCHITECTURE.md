@@ -104,7 +104,7 @@ actual run so the documentation cannot drift from the behaviour either.
 
 `config/preferences.yaml` is the only file a user edits. `config/preferences.example.yaml`
 is the committed template; `config/answers.example.yaml` is the answer bank;
-`config/routines.yaml` is the timetable.
+`routines/routines.yaml` is the timetable.
 
 Two environment variables move those files elsewhere: `JOBPILOT_CONFIG` for the
 settings and `JOBPILOT_DATA_DIR` for everything the assistant writes. One
@@ -266,14 +266,20 @@ phrase.
 
 ## The timetable
 
-`config/routines.yaml` is declarative: a name, a schedule, what it does, and the
+`routines/routines.yaml` is declarative: a name, a schedule, what it does, and the
 sentence the user hears. `jobpilot routines run-due` works out what is due,
 runs it, and records when each one last ran — so calling it again straight away
 does nothing. That makes it safe to drive from anything, including cron:
 
 ```cron
-*/10 * * * * cd ~/jobpilot && jobpilot routines run-due >> ~/.jobpilot/logs/cron.log 2>&1
+*/10 * * * * cd <this checkout> && jobpilot routines run-due >> <data_dir>/logs/cron.log 2>&1
 ```
+
+`jobpilot routines list --technical` prints that line filled in, and a systemd
+user-timer equivalent. Both are generated: the folder comes from
+`config.repo_root()` (the directory above the package that holds `pyproject.toml`
+and `config/`, overridable with `JOBPILOT_HOME`) and the log path from the
+configured data directory. Nothing anywhere assumes what the clone is called.
 
 Three schedule shapes: `at:` with `days:` (once per matching day), `window:`
 (repeatedly while open, at most once per `every_minutes`), and `every:`. A

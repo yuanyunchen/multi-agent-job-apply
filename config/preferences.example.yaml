@@ -39,7 +39,7 @@ documents:
   background_notes: "config/background.md" # facts a model may use in short essays
 
 # Your own status only. Which posting sentences disqualify a role is logic
-# (jobpilot/rules.py) and is the same for everyone.
+# (src/jobpilot/rules.py) and is the same for everyone.
 work_authorization:
   authorized_to_work: true
   needs_sponsorship_now_or_later: true

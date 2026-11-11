@@ -282,7 +282,26 @@ def test_the_cron_line_is_shown_in_technical_mode(settings_file, capsys):
     out = capsys.readouterr().out
     assert "crontab" in out
     assert "jobpilot routines run-due" in out
-    assert "/workspace" not in out and "/home/" not in out
+    assert "OnCalendar" in out  # and the systemd version, for people who prefer it
+
+
+def test_the_cron_line_names_the_real_folder_not_a_guessed_one(settings_file):
+    """The clone can be called anything, so the line must be worked out, not written down."""
+    from jobpilot.cli import cron_line, shorten
+    from jobpilot.config import repo_root
+
+    line = cron_line()
+    assert "cd ~/jobpilot " not in line, "the folder name must not be hardcoded"
+    assert f"cd {shorten(repo_root())} " in line
+    assert (repo_root() / "pyproject.toml").exists()
+
+
+def test_the_cron_line_logs_inside_the_configured_data_folder(settings_file):
+    from jobpilot.cli import cron_line, shorten
+    from jobpilot.config import load
+
+    config = load(settings_file)
+    assert f"{shorten(config.paths.logs)}/cron.log" in cron_line(config)
 
 
 def test_run_due_is_safe_to_call_twice(settings_file, capsys, monkeypatch):

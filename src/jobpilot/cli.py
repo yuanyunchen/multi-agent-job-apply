@@ -248,7 +248,9 @@ def cmd_routines(args: argparse.Namespace) -> int:
             print(f"\nDue right now: {plural(len(waiting), 'thing')}.")
         if renderer.technical:
             print("\nTo let this run by itself, add one line to your crontab:")
-            print(CRON_LINE)
+            print(cron_line(config))
+            print("\nOr, with systemd:")
+            print(systemd_snippet(config))
         return 0
 
     report = run_due(config, now=moment, renderer=renderer, dry_run=args.dry_run)
@@ -274,8 +276,48 @@ def _moment(args: argparse.Namespace):
         ) from exc
 
 
-#: The one line a user adds to run the timetable by itself.
-CRON_LINE = "*/10 * * * * cd ~/jobpilot && jobpilot routines run-due >> ~/.jobpilot/logs/cron.log 2>&1"
+def cron_line(config: Config | None = None) -> str:
+    """The one line a user adds to run the timetable by itself.
+
+    The folder is the one they actually cloned into, and the log sits in their
+    own data directory — both worked out when asked. A printed line with a
+    guessed folder name in it is a line that does not work.
+    """
+    root = repo_root()
+    logs = config.paths.logs if config is not None else Path("~/.jobpilot/logs").expanduser()
+    return (
+        f"*/10 * * * * cd {shorten(root)} && "
+        f"jobpilot routines run-due >> {shorten(logs)}/cron.log 2>&1"
+    )
+
+
+def systemd_snippet(config: Config | None = None) -> str:
+    """The same timetable as a systemd user timer, for people who prefer it."""
+    root = repo_root()
+    return "\n".join(
+        [
+            "# ~/.config/systemd/user/jobpilot.service",
+            "[Service]",
+            "Type=oneshot",
+            f"WorkingDirectory={shorten(root)}",
+            "ExecStart=%h/.local/bin/jobpilot routines run-due",
+            "",
+            "# ~/.config/systemd/user/jobpilot.timer",
+            "[Timer]",
+            "OnCalendar=*:0/10",
+            "Persistent=true",
+            "[Install]",
+            "WantedBy=timers.target",
+        ]
+    )
+
+
+def shorten(path: Path | str) -> str:
+    """Write a path under the home directory as ``~/...``; leave the rest alone."""
+    try:
+        return "~/" + str(Path(path).resolve().relative_to(Path.home()))
+    except (ValueError, OSError, RuntimeError):
+        return str(path)
 
 
 def cmd_digest(args: argparse.Namespace) -> int:

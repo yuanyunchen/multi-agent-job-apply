@@ -1,6 +1,6 @@
 """Routines: what runs by itself, declared in YAML and explained in words.
 
-``config/routines.yaml`` is the only description of the timetable. The renderer
+``routines/routines.yaml`` is the only description of the timetable. The renderer
 turns a schedule into the sentence a user would say — "Every weekday at 8am you
 get one email" — so the timetable the user is told about cannot drift from the
 one that runs.
@@ -14,7 +14,7 @@ from typing import Any
 
 import yaml
 
-from .config import Config, DEFAULT_ROUTINES_PATH, repo_root
+from .config import Config, routines_path
 from .errors import ConfigError
 
 DAY_WORDS = {
@@ -69,7 +69,7 @@ class Routine:
 
 
 def load_routines(path: str | Path | None = None) -> list[Routine]:
-    chosen = Path(path) if path else (repo_root() / DEFAULT_ROUTINES_PATH)
+    chosen = Path(path) if path else routines_path()
     if not chosen.exists():
         return []
     payload = yaml.safe_load(chosen.read_text(encoding="utf-8")) or {}

@@ -16,9 +16,9 @@ tell the agent what the guards are and how to behave around them.
 Browser prompts for the optional helpers ship with the helpers themselves, so a
 helper and its prompt can never drift apart:
 
-- `jobpilot/plugins/linkedin/agent.md`
-- `jobpilot/plugins/handshake/agent.md`
-- `jobpilot/plugins/yc/agent.md`
+- `src/jobpilot/plugins/linkedin/agent.md`
+- `src/jobpilot/plugins/handshake/agent.md`
+- `src/jobpilot/plugins/yc/agent.md`
 
 ## Rules every role shares
 

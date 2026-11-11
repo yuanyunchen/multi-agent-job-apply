@@ -25,10 +25,14 @@ SCHEMA_VERSION = 2
 
 ENV_DATA_DIR = "JOBPILOT_DATA_DIR"
 ENV_CONFIG = "JOBPILOT_CONFIG"
+ENV_HOME = "JOBPILOT_HOME"
 
 DEFAULT_CONFIG_PATH = Path("config/preferences.yaml")
 EXAMPLE_CONFIG_PATH = Path("config/preferences.example.yaml")
-DEFAULT_ROUTINES_PATH = Path("config/routines.yaml")
+#: Where the timetable lives. The second entry is where it used to live, so a
+#: checkout made before the move keeps working.
+ROUTINES_PATHS = (Path("routines/routines.yaml"), Path("config/routines.yaml"))
+DEFAULT_ROUTINES_PATH = ROUTINES_PATHS[0]
 
 UI_MODES = ("simple", "technical")
 UI_MODE_ALIASES = {"plain": "simple", "default": "simple", "verbose": "technical"}
@@ -244,9 +248,47 @@ class Config:
         return path if path.is_absolute() else (repo_root() / path)
 
 
+#: Files that mark the top of a checkout. ``pyproject.toml`` alone is not
+#: enough: a nested build directory can have one too.
+ROOT_MARKERS = ("pyproject.toml", "config")
+
+
 def repo_root() -> Path:
-    """The checkout this package lives in (used only for *committed* files)."""
-    return Path(__file__).resolve().parent.parent
+    """The project directory, whatever it is called and wherever it is run from.
+
+    Looked up in this order, and never hardcoded:
+
+    1. ``JOBPILOT_HOME``, for an installed copy whose files live elsewhere;
+    2. the first directory at or above this package holding ``pyproject.toml``
+       and a ``config`` directory — which works for both ``src/jobpilot`` and a
+       flat checkout;
+    3. the current directory, if it looks like a checkout;
+    4. the package's own parent, as a last resort.
+
+    This is why nothing in the project prints ``cd ~/jobpilot``: the folder is
+    whatever the user cloned into.
+    """
+    override = os.environ.get(ENV_HOME)
+    if override:
+        return expand(override).resolve()
+    here = Path(__file__).resolve()
+    for candidate in here.parents:
+        if all((candidate / marker).exists() for marker in ROOT_MARKERS):
+            return candidate
+    cwd = Path.cwd().resolve()
+    if all((cwd / marker).exists() for marker in ROOT_MARKERS):
+        return cwd
+    return here.parent.parent
+
+
+def routines_path() -> Path:
+    """The timetable file in this checkout, new location first."""
+    root = repo_root()
+    for relative in ROUTINES_PATHS:
+        candidate = root / relative
+        if candidate.exists():
+            return candidate
+    return root / DEFAULT_ROUTINES_PATH
 
 
 # -- validation ----------------------------------------------------------

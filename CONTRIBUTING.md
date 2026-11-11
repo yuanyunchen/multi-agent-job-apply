@@ -49,7 +49,7 @@ This is a public repository used by real job seekers.
 - Paths come from settings or the environment. `~/.jobpilot` and repository-
   relative paths are fine; `/home/...`, `/Users/...` and `/workspace/...` are
   not, including in documentation.
-- Plugin prompts (`jobpilot/plugins/*/agent.md`) are templated from settings and
+- Plugin prompts (`src/jobpilot/plugins/*/agent.md`) are templated from settings and
   must contain no personal data of any kind.
 
 ## Writing a plugin
@@ -119,7 +119,7 @@ printed.
 
 ### The manifest
 
-A plugin is a directory under `jobpilot/plugins/<name>/` with `plugin.yaml`, an
+A plugin is a directory under `src/jobpilot/plugins/<name>/` with `plugin.yaml`, an
 `__init__.py` and (if it drives a browser) `agent.md`. The manifest is what the
 user is shown, so `summary` and `explain` are written for them, not for you. If
 your plugin needs a login, `enabled_default` **must** be `false` — the loader

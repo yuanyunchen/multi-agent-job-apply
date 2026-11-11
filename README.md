@@ -37,7 +37,7 @@ instead.)
 ```bash
 git clone https://github.com/yuanyunchen/multi-agent-job-apply
 cd multi-agent-job-apply
-python3 -m venv .venv && . .venv/bin/activate   # Python 3.11 or newer
+python3 -m venv .venv && . .venv/bin/activate   # Python 3.10 or newer
 pip install -e .
 jobpilot setup            # answer the questions
 jobpilot logins           # sign in to anything you switched on, in your browser
@@ -62,15 +62,24 @@ jobpilot run apply --dry-run      # a practice run: nothing is sent
 jobpilot ask "stop applying outside New York"   # change anything, in your words
 ```
 
-To let it run by itself, add one line to your scheduler — `crontab -e`, then:
+To let it run by itself, add one line to your scheduler. Ask for the line
+instead of copying one, because it has to name the folder *you* downloaded
+into:
+
+```bash
+jobpilot routines list --technical    # prints the line, ready to paste
+crontab -e                            # paste it at the end
+```
+
+The line looks like this, with your own folder in place of the one shown:
 
 ```cron
-*/10 * * * * cd ~/jobpilot && jobpilot routines run-due >> ~/.jobpilot/logs/cron.log 2>&1
+*/10 * * * * cd ~/your-folder && jobpilot routines run-due >> ~/.jobpilot/logs/cron.log 2>&1
 ```
 
 `jobpilot routines run-due` works out what is due, does it, and remembers that
 it did, so calling it every ten minutes is safe: nothing happens twice. The
-timetable itself is in `config/routines.yaml`, written in the same plain words it
+timetable itself is in `routines/routines.yaml`, written in the same plain words it
 reads back to you, and `jobpilot routines list` shows it.
 
 ## What you can switch on

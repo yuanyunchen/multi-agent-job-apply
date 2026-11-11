@@ -14,16 +14,21 @@ import pytest
 
 REPO = Path(__file__).resolve().parent.parent
 
-#: Checked in every committed text file. v1 is excluded: it is a frozen export.
-SEARCHED = ("*.py", "*.md", "*.yaml", "*.yml", "*.toml", "*.json", "*.cfg")
+#: Checked in every committed text file.
+SEARCHED = ("*.py", "*.md", "*.yaml", "*.yml", "*.toml", "*.json", "*.cfg", "*.sh", "Makefile")
 SKIP_DIRS = {"legacy", ".git", "__pycache__", ".pytest_cache", "build", "dist", ".venv", "venv"}
+
+#: The standalone version of these rules. It cannot pass its own rules: its
+#: whole content is the patterns it looks for. ``test_the_two_hygiene_checks_agree``
+#: is what keeps the two in step.
+RULE_FILES = {"scripts/sanitize_scan.py"}
 
 #: A path that belongs to one computer.
 MACHINE_PATHS = re.compile(r"(/home/[a-z]|/Users/[A-Za-z]|/workspace|/private/var|/tmp/[a-z])")
 
 #: Lines allowed to mention one, because they are the rules about them.
 ALLOWED_PATH_MENTIONS = (
-    "jobpilot/testmode.py",
+    "src/jobpilot/testmode.py",
     "tools/record_sample_session.py",
     "CONTRIBUTING.md",
     "tests/test_repo_hygiene.py",
@@ -43,8 +48,10 @@ def committed_files() -> list[Path]:
                 continue
             if path.name == Path(__file__).name:
                 continue  # this file quotes the things it is looking for
+            if str(path.relative_to(REPO)) in RULE_FILES:
+                continue  # so does the standalone scanner
             out.append(path)
-    return sorted(out)
+    return sorted(set(out))
 
 
 def test_there_are_files_to_check():
@@ -147,7 +154,7 @@ def test_agents_md_points_at_the_pieces_an_agent_needs():
         "agents/search.md",
         "agents/apply.md",
         "agents/mail.md",
-        "config/routines.yaml",
+        "routines/routines.yaml",
         "JOBPILOT_CONFIG",
         "`jobpilot setup`",
         "`jobpilot logins`",
