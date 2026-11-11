@@ -28,7 +28,7 @@ reference · **no** — absent · **n/a** — deliberately out of scope.
 | De-duplicate by the site's own job identifier | scoped to company and system | yes | yes | `search/dedupe.py` |
 | De-duplicate by company and title, as a **flag** | flags, never drops — loose matching once removed good rows | no | yes | `possible_duplicates()` |
 | Per-source funnel counts, and "found nothing" reported | per-source yield logging | yes | yes | `SearchReport`, weekly review |
-| Thousands of known boards, aggregators, archive crawling | a large source registry | no | **no** | out of scope: see §9 |
+| Thousands of known boards, aggregators, archive crawling | a large source registry | no | **no** | out of scope: see §10 |
 | Platform one-click apply during search | in-app quick apply | part (plugin manifests) | part | plugin territory; core ships no sender |
 
 ## 2. Deciding what is worth applying to
@@ -47,7 +47,7 @@ reference · **no** — absent · **n/a** — deliberately out of scope.
 | Non-local, clearance, citizenship, doctorate rules | each needing a quote | yes | yes | `rules.py` |
 | Freshness as a ranking signal, never a disqualifier | undated rows marked, not dropped | yes | yes | `queue.py` |
 | Description fetched from the application system when a listing is thin | HTTP backfill | part | part | `search/ats.py` returns descriptions; no separate backfill pass |
-| Description compacted before the model sees it | boilerplate stripped, protected lines kept | no | **no** | out of scope: see §9 |
+| Description compacted before the model sees it | boilerplate stripped, protected lines kept | no | **no** | out of scope: see §10 |
 
 ## 3. The record
 
@@ -90,9 +90,9 @@ reference · **no** — absent · **n/a** — deliberately out of scope.
 | Nothing submitted without permission **and** a check | permission plus gate | yes | yes | `gates.OutboundGate` |
 | Never invent a form answer | no answer on file ⇒ stop and ask | yes | yes | `gates.AnswerBank` |
 | Personal identifiers always stop | regardless of the answer file | yes | yes | `ALWAYS_ASK` |
-| Lane *phases* by time of day, borrow and lend | windows assigning lanes to bots | no | **no** | out of scope: see §9 |
-| Read back the live form and compare before submitting | a browser-side submit guard | no | **no** | driver territory: see §9 |
-| Per-application-system form handlers | one module per family | no | **no** | plugin territory: see §9 |
+| Lane *phases* by time of day, borrow and lend | windows assigning lanes to bots | no | **no** | out of scope: see §10 |
+| Read back the live form and compare before submitting | a browser-side submit guard | no | **no** | driver territory: see §10 |
+| Per-application-system form handlers | one module per family | no | **no** | plugin territory: see §10 |
 
 ## 5. Mail, receipts and codes
 
@@ -161,6 +161,10 @@ reference · **no** — absent · **n/a** — deliberately out of scope.
 | A self-check that touches no account | `doctor` | yes | yes | `cmd_doctor` |
 | An explanation generated from what is installed | cannot drift | yes | yes | `explain.py` |
 | Role prompts, one per role | behaviour, not implementation | yes | yes | `agents/` |
+| **An importable template per role** | each bot defined by its profile, memories, skills and routines | **no** | yes | `templates/bots/<role>/` |
+| **A first conversation per bot**, asking one question at a time | the onboarding dialogue | part (one, for the whole system) | yes | `templates/bots/*/getting-started/SKILL.md` |
+| **A share payload generated from the folder** | — | n/a | yes | `share.json`, `scripts/build_bot_templates.py` |
+| **Provider slots, with no vendor name in any prompt** | models named throughout the live skills | part | yes | the `agent-routing` skill; a test fails on a model name |
 | Engagement helpers: a network, a school platform, a startup list | off until switched on | yes | yes | `src/jobpilot/plugins/` |
 | Declarative timetable covering everything | one entry per scheduled unit | part (7 entries) | yes (15) | `routines/routines.yaml` |
 | Every timetable entry maps to a real callable | — | part | yes | `scheduler.resolve` |
@@ -171,7 +175,26 @@ reference · **no** — absent · **n/a** — deliberately out of scope.
 | Several model providers with a fallback chain | typed failure, `answered_by` | yes | yes | `providers/` |
 | A read-only reviewer model, and a sandboxed worker | separate guards | part | **part** | the provider interface supports the roles; the sandboxes are not reimplemented |
 
-## 9. Deliberately not rebuilt
+## 9. Publishing hygiene
+
+Rules about the repository itself rather than about the product. Each is
+enforced twice: in the suite, and in a standalone script CI and the migration
+check run against a bare clone.
+
+| capability | before | after | where |
+|---|---|---|---|
+| No personal data, no machine paths, no address outside the reserved example domains | yes | yes | `scripts/sanitize_scan.py`, `tests/test_repo_hygiene.py` |
+| A template placeholder is never a value | part | yes | `config.has_placeholder`, the scan |
+| **Every tracked text file is English** | **no** | yes | `NON_ENGLISH` in the scan, `tests/test_english_only.py` |
+| The two copies of the rules agree with each other | yes | yes | `test_the_two_hygiene_checks_agree` |
+| Every bot template is complete, parseable and consistent with its payload | n/a | yes | `tests/test_templates.py` |
+
+The English-only rule is the one with **no exemptions**, including for the two
+files that define the patterns: they write escapes rather than characters, so
+"there is none of this anywhere" is true of the checker too and can be
+verified with a plain search.
+
+## 10. Deliberately not rebuilt
 
 Each of these was in the reference system and is **not** here. They are left
 out for a reason, not forgotten.
@@ -191,7 +214,7 @@ out for a reason, not forgotten.
 | Numeric exit codes per guard | Refusals are typed and named instead. The codes were an operator interface for one machine's scripts; the names read better and survive refactoring. |
 | Tracker rows, mail, run logs, metrics history, résumé content, company lists | **Data, not logic.** Nothing was ported. Every fixture and example here is synthetic. |
 
-## 10. How this was checked
+## 11. How this was checked
 
 - `JOBPILOT_TEST=1 pytest -q` — the whole suite, with every door to the real
   world bolted (no network, no mailbox, no browser, no model tool).
@@ -201,6 +224,8 @@ out for a reason, not forgotten.
 - `scripts/migration_check.sh` — clone into a differently named folder, fresh
   virtual environment, install, `doctor`, the whole suite, and a scan of the
   clone.
+- `scripts/build_bot_templates.py --check` — every bot template's share payload
+  is up to date with the folder it was generated from.
 - `tests/test_examples.py` — every example script runs offline and sends
   nothing.
 - `tests/test_migration.py` — `doctor` from an unrelated directory, the

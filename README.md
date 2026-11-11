@@ -185,6 +185,8 @@ caused it, and `jobpilot status --technical` shows the numbers behind everything
 - [`docs/MIGRATION.md`](docs/MIGRATION.md) — moving in, moving your things, and
   the portability checks.
 - [`agents/`](agents/) — the prompt for each role.
+- [`templates/`](templates/) — the same seven roles as bot templates you can
+  import somewhere else, one folder each.
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) — development, tests, writing a plugin.
 - [`CHANGELOG.md`](CHANGELOG.md) — what changed, and what to do about it.
 

@@ -67,9 +67,27 @@ details.
   script, so CI and the migration check can run them against a bare clone.
 - **A Makefile**, `scripts/setup.sh`, and a GitHub Actions workflow (Python
   3.10–3.12, tests, self-check, sanitize scan, and the full migration run).
+- **Seven importable bot templates**, one per team role
+  ([`templates/bots/`](templates/bots)): `lead`, `search`, `apply`, `mail`,
+  `linkedin`, `handshake`, `yc`. Each is a folder holding a profile, the facts
+  the bot starts out knowing, its skills, its routines, and the first
+  conversation it has with a new owner - plus a `share.json` **generated** from
+  those files by `scripts/build_bot_templates.py`, so the folder and the import
+  cannot disagree. Search is **one role with two focus modes** rather than two
+  bots, because two copies of the screening rules drift. No skill, prompt or
+  routine names a model or a vendor: providers are configurable slots, and a
+  test fails the build on a vendor name.
+- **`jobpilot templates list|show|export <role>`** - reads the templates, and
+  needs no settings, because somebody looking at them has not set anything up
+  yet.
+- **An English-only rule, enforced** (`NON_ENGLISH` in the sanitize scan,
+  `tests/test_english_only.py`). Every tracked text file, no exemptions - the
+  two files that define the patterns pass by writing escapes rather than
+  characters, so "there is none of this anywhere" is true of the checker too.
 - **Docs**: [`CAPABILITY-MATRIX.md`](docs/CAPABILITY-MATRIX.md),
   [`MIGRATION.md`](docs/MIGRATION.md), [`ROUTINES.md`](docs/ROUTINES.md),
-  [`APPLY-METHOD.md`](docs/APPLY-METHOD.md), this changelog.
+  [`APPLY-METHOD.md`](docs/APPLY-METHOD.md),
+  [`templates/README.md`](templates/README.md), this changelog.
 
 ### Changed
 
@@ -103,6 +121,9 @@ details.
 - `agents/search.md` documents the wide and deep lanes as **one role with one
   set of rules**: two roles means two copies of the rules, and those drift.
 - `agents/README.md` lists every role, including the three helpers.
+- `AGENTS.md`'s "build the team" step now works from `templates/bots/*`, so the
+  coding-agent route and the bot-product route build the same seven roles from
+  the same files.
 
 ### Moved
 
@@ -121,4 +142,4 @@ details.
 
 ### Tests
 
-456 → 742.
+456 → 904.

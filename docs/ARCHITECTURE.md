@@ -108,6 +108,7 @@ Outside the package:
 |---|---|
 | `routines/routines.yaml` | the whole timetable, declarative — see [ROUTINES.md](ROUTINES.md) |
 | `agents/` | one prompt per role, plus each helper's prompt shipped with the helper |
+| `templates/bots/` | the same seven roles as importable bot templates: profile, memories, skills, routines, and a generated `share.json` |
 | `config/*.example.*` | templates: settings, the answer bank, job titles, which pages to read |
 | `examples/` | eight scripts that run offline against synthetic data |
 | `scripts/` | setup, the hygiene scan, and the clone-install-test migration check |
@@ -357,7 +358,7 @@ from somebody's computer.
 
 ## What is deliberately not here yet
 
-[`CAPABILITY-MATRIX.md`](CAPABILITY-MATRIX.md) §9 has the full list, with the
+[`CAPABILITY-MATRIX.md`](CAPABILITY-MATRIX.md) §10 has the full list, with the
 reason for each. The short version:
 
 - **A real browser apply driver.** The core ships `DryRunDriver`; a real one

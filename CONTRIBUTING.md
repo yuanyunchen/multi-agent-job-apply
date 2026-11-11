@@ -34,6 +34,7 @@ tests/               pytest; fixtures are synthetic only
 routines/            routines.yaml — the whole timetable
 config/              *.example.* templates only; real settings are gitignored
 agents/              one prompt per role
+templates/           the same roles as importable bot templates
 examples/            runnable, offline, synthetic
 docs/                architecture, capability matrix, migration, routines, apply method
 scripts/             setup, sanitize scan, migration check
@@ -80,6 +81,10 @@ projects:
 - `tests/test_routines.py` fails if a timetable entry has no callable behind
   it, including the entries a helper contributes. A scheduled promise that
   cannot run fails silently every time it comes due.
+- `tests/test_templates.py` fails if a bot template is incomplete, its cron is
+  invalid, its generated `share.json` is stale, or it names a vendor's model
+  where a configurable slot belongs. Run
+  `scripts/build_bot_templates.py` after editing a template.
 
 ## The sanitization rule
 
@@ -92,6 +97,11 @@ This is a public repository used by real job seekers.
 - Paths come from settings or the environment. `~/.jobpilot` and
   project-relative paths are fine; `/home/...`, `/Users/...` and
   `/workspace/...` are not, including in documentation.
+- **English only**, in every tracked text file. This has no exemptions: the two
+  files that define the pattern write it as `\uXXXX` escapes rather than as
+  characters, so the repository contains none of them anywhere. Why: these
+  files become prompts, and a sentence a reviewer cannot read is a sentence
+  nobody reviews.
 - The same rules exist twice on purpose: in the suite
   (`tests/test_repo_hygiene.py`) and as a standalone script
   (`scripts/sanitize_scan.py`) so CI and the migration check can run them
