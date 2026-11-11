@@ -16,17 +16,39 @@ files. You answer about fifteen questions once, in plain language.
                         nothing is sent until you say it may
 ```
 
-## 5-minute start
+## Quick start
 
-**If you use a coding assistant** (Claude Code, Codex, Cursor, …) — the easiest
-way: open [`START_HERE.md`](START_HERE.md), copy the block of text it shows you,
-and paste it into your assistant. It will install, set up and explain everything,
-and talk to you in plain language.
+**Give your AI agent this repository and one sentence.** Any agent with a
+terminal (Claude Code, Codex, Cursor, a bot, …) can set everything up for you —
+paste exactly this:
 
-**If you are happy in a terminal:**
+```
+Read AGENTS.md in https://github.com/yuanyunchen/multi-agent-job-apply and set up my job-application team.
+```
+
+It will clone the project, set up the workspace, build the team, walk you
+through your preferences and your sign-ins, and explain everything in plain
+language. **Nothing is submitted or sent until you switch it on.** (If you are in
+a chat assistant without its own shell, paste [`START_HERE.md`](START_HERE.md)
+instead.)
+
+**Rather do it yourself in a terminal?**
 
 ```bash
-pip install -e .          # Python 3.11 or newer
+git clone https://github.com/yuanyunchen/multi-agent-job-apply
+cd multi-agent-job-apply
+python3 -m venv .venv && . .venv/bin/activate   # Python 3.11 or newer
+pip install -e .
+jobpilot setup            # answer the questions
+jobpilot logins           # sign in to anything you switched on, in your browser
+```
+
+## 5-minute start
+
+`jobpilot start` rolls the introduction, the questions and the sign-ins into one
+conversation:
+
+```bash
 jobpilot start            # meet the team, then answer the questions
 ```
 
@@ -129,6 +151,8 @@ caused it, and `jobpilot status --technical` shows the numbers behind everything
 
 ## Documentation
 
+- [`AGENTS.md`](AGENTS.md) — the entry point for an agent given only the repo
+  link: how it installs, builds the team and runs setup itself.
 - [`START_HERE.md`](START_HERE.md) — the prompt to paste into an assistant.
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — how it works, and why.
 - [`docs/sample-session.md`](docs/sample-session.md) — a complete practice run,

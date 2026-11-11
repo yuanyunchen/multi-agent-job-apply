@@ -445,3 +445,13 @@ def test_logins_with_closed_input_does_not_wait(settings_file, capsys, monkeypat
     monkeypatch.setattr("sys.stdin", io.StringIO(""))  # not a terminal, nothing to read
     assert run(["logins"], settings_file) in (0, 1)
     assert "Nobody is here to answer" in capsys.readouterr().out
+
+
+def test_technical_works_before_or_after_the_command():
+    from jobpilot.cli import build_parser
+
+    parser = build_parser()
+    assert parser.parse_args(["--technical", "routines", "list"]).technical is True
+    assert parser.parse_args(["routines", "list", "--technical"]).technical is True
+    assert parser.parse_args(["status", "--technical"]).technical is True
+    assert parser.parse_args(["status"]).technical is False

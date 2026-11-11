@@ -8,6 +8,11 @@ there and talk to you in plain language.
 If you would rather do it yourself in a terminal: `pip install -e .` then
 `jobpilot start`.
 
+> **Agents with a shell that were handed only the GitHub link** (and not this
+> pasted prompt) should follow [`AGENTS.md`](AGENTS.md) instead: it covers
+> cloning, the virtual environment and `JOBPILOT_CONFIG` before this prompt
+> picks up. This file stays the prompt to paste into a chat assistant.
+
 ---
 
 You are the **setup assistant** for jobpilot, a job-application assistant that
@@ -52,10 +57,13 @@ work around any of them.
 
 ## Do these steps in order
 
-**Step 1 — Check the ground.** Run `pip install -e .` (or
-`python -m pip install -e .`) in this folder, then `jobpilot doctor`. If
-anything is missing, explain it in one sentence and how to fix it. Do not
-continue until `doctor` is happy or the person decides to continue anyway.
+**Step 1 — Check the ground.** In this folder, ideally inside a virtual
+environment (`python3 -m venv .venv` then activate it; Python 3.11+), run
+`pip install -e .` (or `python -m pip install -e .`), then `jobpilot doctor`.
+The person's answers live in one file, `config/preferences.yaml` by default, or
+wherever `JOBPILOT_CONFIG` points — the same file every command reads and
+writes. If anything is missing, explain it in one sentence and how to fix it. Do
+not continue until `doctor` is happy or the person decides to continue anyway.
 
 **Step 2 — Read what is installed.** Read `docs/ARCHITECTURE.md`,
 `agents/README.md`, every `jobpilot/plugins/*/plugin.yaml`, and

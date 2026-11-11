@@ -583,6 +583,14 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("stage", choices=["search", "screen", "apply"])
     run.add_argument("--dry-run", action="store_true", help="change nothing and send nothing")
     run.set_defaults(func=cmd_run)
+
+    # ``--technical`` is accepted after the command too ("jobpilot status --technical"),
+    # which is how the documentation writes it. SUPPRESS keeps the top-level value
+    # when the flag is not repeated after the command.
+    for command in sub.choices.values():
+        command.add_argument(
+            "--technical", action="store_true", default=argparse.SUPPRESS, help="show the details as well"
+        )
     return parser
 
 
