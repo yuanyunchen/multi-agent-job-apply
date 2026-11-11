@@ -66,7 +66,8 @@ details.
 - **`scripts/sanitize_scan.py`**: the repository-hygiene rules as a standalone
   script, so CI and the migration check can run them against a bare clone.
 - **A Makefile**, `scripts/setup.sh`, and a GitHub Actions workflow (Python
-  3.10–3.12, tests, self-check, sanitize scan, and the full migration run).
+  3.10–3.12, tests, self-check, sanitize scan, and the full migration run),
+  shipped as `ci/github-actions-ci.yml`; see `ci/README.md` to enable it.
 - **Seven importable bot templates**, one per team role
   ([`templates/bots/`](templates/bots)): `lead`, `search`, `apply`, `mail`,
   `linkedin`, `handshake`, `yc`. Each is a folder holding a profile, the facts
