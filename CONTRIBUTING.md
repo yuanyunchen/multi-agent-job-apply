@@ -7,13 +7,47 @@ not weakening them.
 ## Development setup
 
 ```bash
-python -m venv .venv && . .venv/bin/activate   # Python 3.11+
+make setup          # a virtual environment, installed in editable mode
+make test           # the whole suite, with the test marker set
+make sanitize       # the repository-hygiene scan
+make doctor         # the self-check, against the example settings
+make examples       # every example script, offline
+make migration-check    # clone into another folder, install, test, scan
+```
+
+Or by hand:
+
+```bash
+python -m venv .venv && . .venv/bin/activate   # Python 3.10+
 pip install -e ".[dev]"
-python -m pytest -q
+JOBPILOT_TEST=1 python -m pytest -q
 ```
 
 Runtime dependencies are **PyYAML and the standard library**. Please do not add
 more without a good reason: this runs on other people's laptops.
+
+## The layout
+
+```
+src/jobpilot/        the package (plugins and providers live inside it, so they import)
+tests/               pytest; fixtures are synthetic only
+routines/            routines.yaml — the whole timetable
+config/              *.example.* templates only; real settings are gitignored
+agents/              one prompt per role
+examples/            runnable, offline, synthetic
+docs/                architecture, capability matrix, migration, routines, apply method
+scripts/             setup, sanitize scan, migration check
+tools/               the sample-session recorder
+```
+
+Two layout rules worth knowing:
+
+- **Nothing may assume the folder name or the working directory.** The project
+  directory comes from `config.repo_root()`. `scripts/migration_check.sh`
+  clones into a differently named folder and runs everything from an unrelated
+  directory, precisely to catch a breach of this.
+- **Core never imports a plugin or a provider.** They register themselves; core
+  sees interfaces and settings.
 
 ## Tests
 
@@ -38,6 +72,15 @@ Two rules about tests, both enforced by the suite itself:
 The suite also asserts that no test writes into the checkout's `config/`
 folder, and that no module contains a path from somebody's computer.
 
+Two more things the suite keeps honest, both of which have rotted in other
+projects:
+
+- `tests/test_examples.py` runs **every** script in `examples/` and fails if one
+  stops working. An example nobody runs is the first thing a newcomer tries.
+- `tests/test_routines.py` fails if a timetable entry has no callable behind
+  it, including the entries a helper contributes. A scheduled promise that
+  cannot run fails silently every time it comes due.
+
 ## The sanitization rule
 
 This is a public repository used by real job seekers.
@@ -46,9 +89,14 @@ This is a public repository used by real job seekers.
   schools, employers, account handles, tokens or machine paths — not in code,
   tests, fixtures, docs or commit messages.
 - Use `{{PLACEHOLDER}}` in example files and synthetic values everywhere else.
-- Paths come from settings or the environment. `~/.jobpilot` and repository-
-  relative paths are fine; `/home/...`, `/Users/...` and `/workspace/...` are
-  not, including in documentation.
+- Paths come from settings or the environment. `~/.jobpilot` and
+  project-relative paths are fine; `/home/...`, `/Users/...` and
+  `/workspace/...` are not, including in documentation.
+- The same rules exist twice on purpose: in the suite
+  (`tests/test_repo_hygiene.py`) and as a standalone script
+  (`scripts/sanitize_scan.py`) so CI and the migration check can run them
+  against a bare clone. `test_the_two_hygiene_checks_agree` keeps them in
+  step — if you change one, change both.
 - Plugin prompts (`src/jobpilot/plugins/*/agent.md`) are templated from settings and
   must contain no personal data of any kind.
 

@@ -42,11 +42,19 @@ These models do the thinking:
 This happens by itself:
 - Every morning I look for new jobs that match what you asked for.
 - Right after that I read each new job description and decide whether it is worth applying to.
-- On weekdays between half past nine and six I work through the list and fill in applications.
 - Every weekday at 8am you get one email with what I did and anything that needs you.
+- On weekday mornings I write up any messages worth sending, for you to look over. I send none of them.
+- On weekdays between half past nine and six I work through the list and fill in applications.
+- Overnight I keep working through the list, so the morning starts with it already shorter.
+- Each morning I remind you about any test or interview coming up.
+- And again in the evening, so a deadline is never a surprise.
+- Through the day I read your mail for replies, tests and interview invitations. I only ever read it.
+- Late each morning I check that everything I found in the morning really reached my list.
+- Every hour I check that nothing is quietly stuck, and tell you if something needs you.
 - Each evening I check your mailbox for confirmations, so we know which applications really arrived.
-- At the end of the day I write down how it went and what I could do better.
-- Once a week, on Monday morning, I bring you suggestions. I never change your settings without asking.
+- At the end of the day I look at how it went, and bring you any suggestion worth making.
+- Now and then I tidy away old copies of your records, so they do not fill up your disk.
+- Once a week, on Monday morning, I go over the whole week with you and suggest what to change. I never change your settings without asking.
 (All times are America/New_York time.)
 
 These are the things only you can do:
@@ -86,6 +94,9 @@ YOU > +1 555 0100 222
 Where are you based? (city and state or country)
   … (2 lines of default and consequence omitted)
 YOU > Austin, TX
+Where is your CV? Give me the path to the file and I will attach exactly that one.
+  … (2 lines of default and consequence omitted)
+YOU > (use the default)
 What kind of jobs do you want most? Give me a few job titles.
   … (4 lines of default and consequence omitted)
 YOU > Machine Learning Engineer, AI Engineer
@@ -159,9 +170,31 @@ How many startup applications a week?
   … (2 lines of default and consequence omitted)
 YOU > (use the default)
 
+Last part. Forms ask the same few questions over and over, so let us write your answers down once. Anything you leave blank will stop and ask you instead of being guessed at, and I will never answer a national insurance or date-of-birth question by myself.
+Forms ask: are you allowed to work in the country you are applying in?
+  … (2 lines of default and consequence omitted)
+YOU > (use the default)
+And: will you need the company to sponsor a visa, now or in future?
+  … (2 lines of default and consequence omitted)
+YOU > (use the default)
+Would you move for the right job?
+  … (2 lines of default and consequence omitted)
+YOU > (use the default)
+What is the earliest date you could start? (like 2027-06-01)
+  … (2 lines of default and consequence omitted)
+YOU > (use the default)
+If a form insists on a salary expectation, what should I put?
+  … (2 lines of default and consequence omitted)
+YOU > (use the default)
+And when they ask how you heard about the job?
+  … (2 lines of default and consequence omitted)
+YOU > (use the default)
+
 Here is everything, in plain words:
 
 You on applications: Sam Example · sam@example.test · +1 555 0100 222 · Austin, TX.
+The CV I will attach: you have not told me where it is yet.
+Form answers I will have ready: whether you may work there, whether you need sponsorship, whether you would move, what to say about salary, how you heard about the job.
 Jobs I will go after first: Machine Learning Engineer, AI Engineer.
 Jobs I will apply to after those: Software Engineer, Data Analyst.
 Jobs I will never apply to: Sales, Technician.
@@ -179,6 +212,7 @@ How much detail you see: simple.
 
 Nothing is sent, submitted or posted until you switch that on separately. I will never apply to the same job twice, make up an answer on a form, reset a password, or change one of these settings without asking you.
 YOU > yes
+I have written down 5 answers to the questions forms ask. Anything not on that list stops and asks you.
 Saved. Your answers are written down, and you can change any of them whenever you like.
 In words: I will look for Machine Learning Engineer, AI Engineer first, skip anything that clearly rules you out and keep the sentence that did it, and apply to the newest ones first.
 Helpers switched on: handshake, linkedin, yc.
@@ -205,7 +239,7 @@ I will never apply or submit anything; edit your profile or your documents; sign
 Tell me 'done' when you are signed in, or press enter to leave it for later.
   … (2 lines of default and consequence omitted)
 YOU > done
-handshake: ready.
+handshake: set up, but I have not watched you sign in, so I will not call it ready. To be sure, i check by opening the jobs page and telling you which account it sees.
 
 LinkedIn.
 Why I need it: it is what 'linkedin' works with: Get noticed on LinkedIn: sends connection requests and writes short, relevant comments.
@@ -215,7 +249,7 @@ I will never sign you in or out; change your password; edit your profile; read o
 Tell me 'done' when you are signed in, or press enter to leave it for later.
   … (2 lines of default and consequence omitted)
 YOU > done
-linkedin: ready.
+linkedin: set up, but I have not watched you sign in, so I will not call it ready. To be sure, i check by opening your feed without changing anything and telling you the account name it sees.
 
 Startup jobs platform account.
 Why I need it: it is what 'yc' works with: Keeps your startup-list profile visible and applies to matching startups with a short note, up to a weekly limit.
@@ -235,11 +269,13 @@ I will never sign you out; copy your sign-in files; change that tool's own setti
 Tell me 'done' when you are signed in, or press enter to leave it for later.
   … (2 lines of default and consequence omitted)
 YOU > done
-claude: ready.
+claude: ready — the tool itself says you are signed in.
 
-Ready: handshake, linkedin, claude.
+Ready: claude.
 Still to do, and what stays off until then:
   - mailbox: you are signed in, but I have no way to read that mailbox yet, so applications will stay 'sent' rather than 'confirmed'.
+  - handshake: set up, but I have not watched you sign in, so I will not call it ready. To be sure, i check by opening the jobs page and telling you which account it sees.
+  - linkedin: set up, but I have not watched you sign in, so I will not call it ready. To be sure, i check by opening your feed without changing anything and telling you the account name it sees.
   - yc: left for later, so its part stays switched off.
 ```
 
@@ -247,10 +283,11 @@ Still to do, and what stays off until then:
 
 ```console
 $ jobpilot doctor
-Settings: fine (~/jobpilot/preferences.yaml).
+Settings: fine (~/your-folder/preferences.yaml).
 My own files: fine (~/.jobpilot).
 Your application record: fine (0 jobs on file).
-Your answers: none yet, so forms with questions will wait for you.
+Your answers: fine (5 answers written down).
+Your CV: I do not know where it is, so applications needing one will wait.
 Model for reading job descriptions: fine (with 2 spares if it is busy).
 Model for reviewing and planning: fine (with 2 spares if it is busy).
 Model for working in a browser: fine (with 2 spares if it is busy).
@@ -258,7 +295,9 @@ Room to work: fine.
 Helper 'handshake': on.
 Helper 'linkedin': on.
 Helper 'yc': on.
-Timetable: 11 routines.
+Employer sign-ups: nothing waiting for you.
+Timetable: 19 routines, all of them ready to run.
+Health: nothing looks stuck.
 Permissions: nothing may be sent or submitted yet.
 
 Everything checks out.
@@ -305,11 +344,19 @@ So far: 0 applications confirmed, 0 waiting for a confirmation, 4 jobs still on 
 What happens by itself:
 - Every morning I look for new jobs that match what you asked for.
 - Right after that I read each new job description and decide whether it is worth applying to.
-- On weekdays between half past nine and six I work through the list and fill in applications.
 - Every weekday at 7:30am you get one email with what I did and anything that needs you.
+- On weekday mornings I write up any messages worth sending, for you to look over. I send none of them.
+- On weekdays between half past nine and six I work through the list and fill in applications.
+- Overnight I keep working through the list, so the morning starts with it already shorter.
+- Each morning I remind you about any test or interview coming up.
+- And again in the evening, so a deadline is never a surprise.
+- Through the day I read your mail for replies, tests and interview invitations. I only ever read it.
+- Late each morning I check that everything I found in the morning really reached my list.
+- Every hour I check that nothing is quietly stuck, and tell you if something needs you.
 - Each evening I check your mailbox for confirmations, so we know which applications really arrived.
-- At the end of the day I write down how it went and what I could do better.
-- Once a week, on Monday morning, I bring you suggestions. I never change your settings without asking.
+- At the end of the day I look at how it went, and bring you any suggestion worth making.
+- Now and then I tidy away old copies of your records, so they do not fill up your disk.
+- Once a week, on Monday morning, I go over the whole week with you and suggest what to change. I never change your settings without asking.
 - Every evening I check your school's job platform for postings only you can see.
 - Every evening I spend a little time making you more visible on LinkedIn.
 - Every evening I look at the startup list and, up to your weekly limit, apply with a short note.
@@ -364,6 +411,9 @@ I will use the new setting from the next time I look for jobs.
 $ jobpilot routines run-due --dry-run
 (practice) Every morning I look for new jobs that match what you asked for.
 (practice) Every weekday at 7:30am you get one email with what I did and anything that needs you.
+(practice) Through the day I read your mail for replies, tests and interview invitations. I only ever read it.
+(practice) Every hour I check that nothing is quietly stuck, and tell you if something needs you.
+(practice) Now and then I tidy away old copies of your records, so they do not fill up your disk.
 ```
 
 ### Letting it run by itself
@@ -373,21 +423,43 @@ $ jobpilot routines list --technical
 What happens by itself:
 - Every morning I look for new jobs that match what you asked for.
 - Right after that I read each new job description and decide whether it is worth applying to.
-- On weekdays between half past nine and six I work through the list and fill in applications.
 - Every weekday at 7:30am you get one email with what I did and anything that needs you.
+- On weekday mornings I write up any messages worth sending, for you to look over. I send none of them.
+- On weekdays between half past nine and six I work through the list and fill in applications.
+- Overnight I keep working through the list, so the morning starts with it already shorter.
+- Each morning I remind you about any test or interview coming up.
+- And again in the evening, so a deadline is never a surprise.
+- Through the day I read your mail for replies, tests and interview invitations. I only ever read it.
+- Late each morning I check that everything I found in the morning really reached my list.
+- Every hour I check that nothing is quietly stuck, and tell you if something needs you.
 - Each evening I check your mailbox for confirmations, so we know which applications really arrived.
-- At the end of the day I write down how it went and what I could do better.
-- Once a week, on Monday morning, I bring you suggestions. I never change your settings without asking.
+- At the end of the day I look at how it went, and bring you any suggestion worth making.
+- Now and then I tidy away old copies of your records, so they do not fill up your disk.
+- Once a week, on Monday morning, I go over the whole week with you and suggest what to change. I never change your settings without asking.
 - Every evening I check your school's job platform for postings only you can see.
 - Every evening I spend a little time making you more visible on LinkedIn.
 - Every evening I look at the startup list and, up to your weekly limit, apply with a short note.
 - I tell you how many startup applications are left in this week's allowance.
 (All times are America/New_York time.)
 
-Due right now: 2 things.
+Due right now: 5 things.
 
 To let this run by itself, add one line to your crontab:
-*/10 * * * * cd ~/jobpilot && jobpilot routines run-due >> ~/.jobpilot/logs/cron.log 2>&1
+*/10 * * * * cd ~/your-folder && jobpilot routines run-due >> ~/.jobpilot/logs/cron.log 2>&1
+
+Or, with systemd:
+# ~/.config/systemd/user/jobpilot.service
+[Service]
+Type=oneshot
+WorkingDirectory=~/your-folder
+ExecStart=%h/.local/bin/jobpilot routines run-due
+
+# ~/.config/systemd/user/jobpilot.timer
+[Timer]
+OnCalendar=*:0/10
+Persistent=true
+[Install]
+WantedBy=timers.target
 ```
 
 ---
@@ -416,11 +488,19 @@ These models do the thinking:
 This happens by itself:
 - Every morning I look for new jobs that match what you asked for.
 - Right after that I read each new job description and decide whether it is worth applying to.
-- On weekdays between half past nine and six I work through the list and fill in applications.
 - Every weekday at 8am you get one email with what I did and anything that needs you.
+- On weekday mornings I write up any messages worth sending, for you to look over. I send none of them.
+- On weekdays between half past nine and six I work through the list and fill in applications.
+- Overnight I keep working through the list, so the morning starts with it already shorter.
+- Each morning I remind you about any test or interview coming up.
+- And again in the evening, so a deadline is never a surprise.
+- Through the day I read your mail for replies, tests and interview invitations. I only ever read it.
+- Late each morning I check that everything I found in the morning really reached my list.
+- Every hour I check that nothing is quietly stuck, and tell you if something needs you.
 - Each evening I check your mailbox for confirmations, so we know which applications really arrived.
-- At the end of the day I write down how it went and what I could do better.
-- Once a week, on Monday morning, I bring you suggestions. I never change your settings without asking.
+- At the end of the day I look at how it went, and bring you any suggestion worth making.
+- Now and then I tidy away old copies of your records, so they do not fill up your disk.
+- Once a week, on Monday morning, I go over the whole week with you and suggest what to change. I never change your settings without asking.
 (All times are America/New_York time.)
 
 These are the things only you can do:
@@ -460,6 +540,9 @@ YOU > (use the default)
 Where are you based? (city and state or country)
   … (2 lines of default and consequence omitted)
 YOU > Chicago, IL
+Where is your CV? Give me the path to the file and I will attach exactly that one.
+  … (2 lines of default and consequence omitted)
+YOU > (use the default)
 What kind of jobs do you want most? Give me a few job titles.
   … (4 lines of default and consequence omitted)
 YOU > Data Analyst
@@ -524,9 +607,31 @@ Would you like plain updates, or all the technical detail? (simple/technical)
   … (2 lines of default and consequence omitted)
 YOU > simple
 
+Last part. Forms ask the same few questions over and over, so let us write your answers down once. Anything you leave blank will stop and ask you instead of being guessed at, and I will never answer a national insurance or date-of-birth question by myself.
+Forms ask: are you allowed to work in the country you are applying in?
+  … (2 lines of default and consequence omitted)
+YOU > (use the default)
+And: will you need the company to sponsor a visa, now or in future?
+  … (2 lines of default and consequence omitted)
+YOU > (use the default)
+Would you move for the right job?
+  … (2 lines of default and consequence omitted)
+YOU > (use the default)
+What is the earliest date you could start? (like 2027-06-01)
+  … (2 lines of default and consequence omitted)
+YOU > (use the default)
+If a form insists on a salary expectation, what should I put?
+  … (2 lines of default and consequence omitted)
+YOU > (use the default)
+And when they ask how you heard about the job?
+  … (2 lines of default and consequence omitted)
+YOU > (use the default)
+
 Here is everything, in plain words:
 
 You on applications: Alex Sample · alex@example.test · no phone number yet · Chicago, IL.
+The CV I will attach: you have not told me where it is yet.
+Form answers I will have ready: whether you may work there, whether you need sponsorship, whether you would move, what to say about salary, how you heard about the job.
 Jobs I will go after first: Data Analyst.
 Jobs I will apply to after those: Business Analyst.
 Jobs I will never apply to: Sales.
@@ -544,6 +649,7 @@ How much detail you see: simple.
 
 Nothing is sent, submitted or posted until you switch that on separately. I will never apply to the same job twice, make up an answer on a form, reset a password, or change one of these settings without asking you.
 YOU > yes
+I have written down 5 answers to the questions forms ask. Anything not on that list stops and asks you.
 Saved. Your answers are written down, and you can change any of them whenever you like.
 In words: I will look for Data Analyst first, skip anything that clearly rules you out and keep the sentence that did it, and apply to the newest ones first.
 Helpers switched on: none.
@@ -571,10 +677,11 @@ Still to do, and what stays off until then:
 
 ```console
 $ jobpilot doctor
-Settings: fine (~/jobpilot/preferences.yaml).
+Settings: fine (~/your-folder/preferences.yaml).
 My own files: fine (~/.jobpilot).
 Your application record: fine (0 jobs on file).
-Your answers: none yet, so forms with questions will wait for you.
+Your answers: fine (5 answers written down).
+Your CV: I do not know where it is, so applications needing one will wait.
 Model for reading job descriptions: fine.
 Model for reviewing and planning: fine.
 Model for working in a browser: fine.
@@ -582,7 +689,9 @@ Room to work: fine.
 Helper 'handshake': off.
 Helper 'linkedin': off.
 Helper 'yc': off.
-Timetable: 7 routines.
+Employer sign-ups: nothing waiting for you.
+Timetable: 15 routines, all of them ready to run.
+Health: nothing looks stuck.
 Permissions: nothing may be sent or submitted yet.
 
 Everything checks out.
@@ -629,11 +738,19 @@ So far: 0 applications confirmed, 0 waiting for a confirmation, 3 jobs still on 
 What happens by itself:
 - Every morning I look for new jobs that match what you asked for.
 - Right after that I read each new job description and decide whether it is worth applying to.
-- On weekdays between half past nine and six I work through the list and fill in applications.
 - Every weekday at 8am you get one email with what I did and anything that needs you.
+- On weekday mornings I write up any messages worth sending, for you to look over. I send none of them.
+- On weekdays between half past nine and six I work through the list and fill in applications.
+- Overnight I keep working through the list, so the morning starts with it already shorter.
+- Each morning I remind you about any test or interview coming up.
+- And again in the evening, so a deadline is never a surprise.
+- Through the day I read your mail for replies, tests and interview invitations. I only ever read it.
+- Late each morning I check that everything I found in the morning really reached my list.
+- Every hour I check that nothing is quietly stuck, and tell you if something needs you.
 - Each evening I check your mailbox for confirmations, so we know which applications really arrived.
-- At the end of the day I write down how it went and what I could do better.
-- Once a week, on Monday morning, I bring you suggestions. I never change your settings without asking.
+- At the end of the day I look at how it went, and bring you any suggestion worth making.
+- Now and then I tidy away old copies of your records, so they do not fill up your disk.
+- Once a week, on Monday morning, I go over the whole week with you and suggest what to change. I never change your settings without asking.
 (All times are America/New_York time.)
 
 What is switched on:

@@ -256,3 +256,94 @@ def test_every_jobpilot_line_in_the_setup_docs_parses(name):
             build_parser().parse_args(words)
         except SystemExit:
             pytest.fail(f"{name}: '{line.strip()}' is not a valid jobpilot command")
+
+
+# -- the documentation a reader is pointed at ----------------------------
+
+
+def test_every_document_the_readme_links_to_exists():
+    """A broken link in the first file somebody opens is the worst kind."""
+    text = (REPO / "README.md").read_text(encoding="utf-8")
+    missing = []
+    for target in re.findall(r"\]\((?!https?:)([^)#]+)\)", text):
+        if not (REPO / target).exists():
+            missing.append(target)
+    assert missing == []
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "docs/ARCHITECTURE.md",
+        "docs/CAPABILITY-MATRIX.md",
+        "docs/MIGRATION.md",
+        "docs/ROUTINES.md",
+        "docs/APPLY-METHOD.md",
+        "docs/sample-session.md",
+        "CHANGELOG.md",
+        "Makefile",
+        "scripts/setup.sh",
+        "scripts/sanitize_scan.py",
+        "scripts/migration_check.sh",
+        "ci/github-actions-ci.yml",
+        "routines/routines.yaml",
+        "config/preferences.example.yaml",
+        "config/answers.example.yaml",
+        "config/search_terms.example.json",
+        "config/sources.example.yaml",
+        "examples/README.md",
+    ],
+)
+def test_the_pieces_of_a_conventional_project_are_all_there(name):
+    assert (REPO / name).exists(), name
+
+
+def test_config_holds_templates_only():
+    """A real settings file in the repository would be somebody's private data."""
+    import subprocess
+
+    listed = subprocess.run(
+        ["git", "ls-files", "config"], cwd=REPO, capture_output=True, text=True, check=True
+    ).stdout.split()
+    assert listed, "expected some templates under config/"
+    for name in listed:
+        assert ".example." in Path(name).name, f"{name} is not a template"
+
+
+def test_nothing_private_is_sitting_in_the_checkout_either():
+    """Not committed is not enough: a stray answer bank is still a leak waiting."""
+    strays = [
+        path.name
+        for path in (REPO / "config").iterdir()
+        if path.is_file() and ".example." not in path.name
+    ]
+    assert strays == [], f"private files left in config/: {strays}"
+
+
+def test_the_capability_matrix_is_honest_about_what_is_missing():
+    """A matrix with no "no" in it is marketing, not an audit."""
+    text = (REPO / "docs" / "CAPABILITY-MATRIX.md").read_text(encoding="utf-8")
+    assert "Deliberately not rebuilt" in text
+    assert text.count("**no**") >= 5
+    assert "Data, not logic" in text
+
+
+def test_the_routines_document_matches_the_timetable():
+    from jobpilot.routines import load_routines
+
+    text = (REPO / "docs" / "ROUTINES.md").read_text(encoding="utf-8")
+    for routine in load_routines():
+        assert routine.what in text, routine.what
+
+
+def test_the_changelog_says_what_moved_and_what_was_renamed():
+    text = (REPO / "CHANGELOG.md").read_text(encoding="utf-8")
+    assert "src/jobpilot/" in text
+    assert "routines/routines.yaml" in text
+    assert "apply.pass" in text
+
+
+def test_the_workflow_runs_the_checks_it_should():
+    text = (REPO / "ci" / "github-actions-ci.yml").read_text(encoding="utf-8")
+    for needed in ("3.10", "3.11", "3.12", "pytest", "sanitize_scan.py", "migration_check.sh"):
+        assert needed in text, needed

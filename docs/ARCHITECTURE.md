@@ -75,30 +75,51 @@ sources ──► rules (FLAGS only) ──► model screen (verbatim quote requ
 | `errors.py` | every error a user can see, each carrying what to do about it |
 | `testmode.py` | the one gate between the code and the real world |
 | `ui.py` | the renderer and the no-jargon lint; one plain line after a self-improvement |
-| `search/` | `Source` + injectable `Fetcher`; built-in no-login board APIs (Greenhouse, Lever, Ashby); de-duplication on canonical URL **and** ATS job id; a pass that reports its funnel per source |
+| `search/` | `Source` + injectable `Fetcher`; built-in no-login board APIs (Greenhouse, Lever, Ashby); de-duplication on canonical URL **and** ATS job id, plus company+title as a deliberately weak third identity that only ever *flags*; a pass that reports its funnel per source |
+| `terms.py` | the one reader for the two lists people edit most — job titles and which company pages to read — from the settings or from a companion file beside them, read fresh on every pass |
 | `rules.py` | deterministic flags (sponsorship family, citizenship, clearance, export control, location, years of experience, doctorate, seniority, excluded categories, held companies, freshness) and the only three automatic drops |
-| `screen.py` | the model screen, the quote check, tiering into core / non-core / irrelevant, and the tracker fields a decision writes |
+| `screen.py` | the model screen, the quote check, and the tracker fields a decision writes |
+| `tiering.py` | the one place a job's queue is decided: rules first, an optional model hook that may drop a job only by quoting the posting, and `model_pending` when nothing answers |
 | `tracker.py` | the single writer: lock, atomic write, rotating backups, append-only event log, and the guards (unknown status, per-row verdicts, skip evidence, receipt required, never-reapply, approval to reconsider, protected rows, one lane per job) |
 | `queue.py` | core first, newest first; non-core waits until core is empty |
+| `pins.py` | the frozen, fingerprinted batch handed to the apply step; waves across lanes, the stop that lets the batch in flight finish, hand-back of jobs a dead wave never reached, and the handoff watchdog |
+| `accounts.py` | which employer sites need an account and what state each is in — states only, never a credential |
 | `gates.py` | the answer bank (or a stop), the outbound gate (permission + checks + caps + pause file + no password resets), the lane guard (count and projected memory) |
 | `apply.py` | the wave runner, the `ApplyDriver` interface and the `DryRunDriver`; every claimed row gets exactly one disposition |
 | `verify.py` | read-only `MailReader`; receipt matching (sender domain, recipient, time window, newest wins); verification codes in a `Code` that cannot be printed; the unconfirmed-rate metric |
-| `report.py` | the daily digest and the reflection log |
+| `report.py` | the daily digest, the reflection log, and the weekly review by source and by application system |
+| `mail.py` | outcome classification with the sentence that justified it, the date pulled out of the message, and the morning and evening reminders |
+| `outreach.py` | the dated manifest of drafts: what would be sent, whether it may go, and why not. It has no sender |
+| `watch.py` | the hourly, token-free health check: queue leaks, a stalled batch, idle capacity, a sign-in that needs the user, confirmations drying up |
 | `lead.py` | metrics, proposals with evidence and an expected effect, turning a sentence into a proposed change, the store of waiting suggestions, and an `apply_proposal`/`decide` pair that refuses without an explicit approval |
 | `routines.py` | the declarative timetable and its rendering in the user's words |
 | `scheduler.py` | works out what is due and runs it, once; the state file that makes it idempotent and safe to call from cron |
 | `catalog.py` | the one list of everything switchable — helpers *and* models — used by the setup conversation, `status` and the README table |
 | `explain.py` | the "what am I getting?" explanation, generated from manifests, timetable and settings so it cannot drift |
 | `wizard.py` | the setup conversation: questions with defaults and consequences, a prose summary to confirm, then one write with a backup |
-| `logins.py` | the sign-in checklist, one platform at a time; asks the helper itself whether it looks ready, and never sees a password |
+| `logins.py` | the sign-in checklist, one platform at a time. `LiveProbe` *reaches* the mailbox or the page read-only, so "ready" means something actually looked; settings that merely look right give `unverified`, and a run with nobody present never claims a sign-in. It never sees a password |
 | `plugins/` | the registry, the manifest format, and LinkedIn / school platform / startup list as plugins, each with an agent prompt |
 | `providers/` | the `ModelProvider` interface with Claude CLI, Codex CLI, any OpenAI-compatible HTTP service, and a deterministic fake; role mapping and a fallback chain |
 | `cli.py` | `start`, `setup`, `logins`, `status`, `ask`, `approve`/`decline`, `run search\|screen\|apply`, `routines list\|run-due`, `digest`, `doctor` |
 
-Outside the package: `START_HERE.md` (the prompt a user pastes into their own
-assistant), `agents/` (one prompt per role), and
-`tools/record_sample_session.py`, which records `docs/sample-session.md` from an
-actual run so the documentation cannot drift from the behaviour either.
+Outside the package:
+
+| where | what |
+|---|---|
+| `routines/routines.yaml` | the whole timetable, declarative — see [ROUTINES.md](ROUTINES.md) |
+| `agents/` | one prompt per role, plus each helper's prompt shipped with the helper |
+| `config/*.example.*` | templates: settings, the answer bank, job titles, which pages to read |
+| `examples/` | eight scripts that run offline against synthetic data |
+| `scripts/` | setup, the hygiene scan, and the clone-install-test migration check |
+| `START_HERE.md` | the prompt a user pastes into their own assistant |
+| `tools/record_sample_session.py` | records `docs/sample-session.md` from an actual run, so the documentation cannot drift from the behaviour either |
+
+**Where everything lives.** The project directory is found by looking upward
+from the package for `pyproject.toml` and `config/` (`config.repo_root()`,
+overridable with `JOBPILOT_HOME`), so nothing depends on what the clone is
+called or on the current working directory. A relative path under `documents:`
+resolves **beside the user's settings file**, so moving the settings with
+`JOBPILOT_CONFIG` moves everything private with them.
 
 ## Settings
 
@@ -335,6 +356,9 @@ asserts that no test writes into the checkout and that no module contains a path
 from somebody's computer.
 
 ## What is deliberately not here yet
+
+[`CAPABILITY-MATRIX.md`](CAPABILITY-MATRIX.md) §9 has the full list, with the
+reason for each. The short version:
 
 - **A real browser apply driver.** The core ships `DryRunDriver`; a real one
   implements `ApplyDriver` and must honour `request.dry_run`.

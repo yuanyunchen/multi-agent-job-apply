@@ -69,12 +69,20 @@ anything without permission.
 
 **Step 4 — Run the setup conversation.** Run `jobpilot setup`. Relay each
 question in your own words if that helps, and relay their answers back. The
-questions cover: the jobs they want most and the jobs they would still take;
-where they would work and whether remote is fine; whether they need visa
-sponsorship; how much experience they have; companies to avoid; companies to
-hold for their decision; how far back to look; which companies' job pages to
-watch; which helpers and which models to switch on; where and when their daily
-summary arrives; and how much detail they want to see.
+questions cover: who they are on a form; **where their CV is** (only the path
+is kept — the file stays where they put it); the jobs they want most and the
+jobs they would still take; where they would work and whether remote is fine;
+whether they need visa sponsorship; how much experience they have; companies to
+avoid; companies to hold for their decision; how far back to look; which
+companies' job pages to watch; which helpers and which models to switch on;
+where and when their daily summary arrives; how much detail they want to see;
+and finally **the answers to the handful of questions every form asks** (may
+you work here, do you need sponsorship, would you move, when could you start,
+salary, how did you hear about us).
+
+Say plainly what the last part is for: anything they leave blank will **stop
+and ask them** rather than be guessed, and a national insurance number or date
+of birth always stops, whatever is written down.
 
 After each answer, give one concrete consequence — for example: "that means a
 'Senior Machine Learning Engineer' posting gets skipped, but 'Machine Learning

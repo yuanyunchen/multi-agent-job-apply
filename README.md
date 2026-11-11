@@ -6,7 +6,9 @@ the applications, checks which ones really arrived, and sends you one short
 summary a day.
 
 You do not need to be technical to use it, and you do not need to edit any
-files. You answer about fifteen questions once, in plain language.
+files. You answer about twenty short questions once, in plain language — what
+you are looking for, where your CV is, and what to put in the boxes forms
+always ask about.
 
 ```
              ┌─────────────────────────────────────────────────────────┐
@@ -146,10 +148,12 @@ immediately, switch their permission off.
 **Where does my data live?** On your computer, in a folder you choose
 (`~/.jobpilot` by default): the record of your applications, backups of it, a
 log of what happened, and the suggestions waiting for your answer. Your answers
-to the setup questions live in `config/preferences.yaml`, which is not committed
-to this repository. Nothing is uploaded anywhere except the job applications
-themselves, and whatever your chosen model sees in order to read a job
-description.
+to the setup questions, and the answers it puts in form boxes, live in two
+files next to each other (`config/preferences.yaml` and `config/answers.yaml`),
+neither of which is part of this project. Your CV is not copied anywhere — it
+only remembers where you keep it. Nothing is uploaded anywhere except the job
+applications themselves, and whatever your chosen model sees in order to read a
+job description.
 
 **What about privacy?** Verification codes are never written down. Passwords,
 tokens and cookies are never read. Anything that looks like a key is scrubbed
@@ -160,14 +164,29 @@ caused it, and `jobpilot status --technical` shows the numbers behind everything
 
 ## Documentation
 
+**If you just want to use it**
+
 - [`AGENTS.md`](AGENTS.md) — the entry point for an agent given only the repo
   link: how it installs, builds the team and runs setup itself.
 - [`START_HERE.md`](START_HERE.md) — the prompt to paste into an assistant.
-- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — how it works, and why.
 - [`docs/sample-session.md`](docs/sample-session.md) — a complete practice run,
   start to finish, recorded from an actual run.
+- [`examples/`](examples/) — eight short scripts you can run right now. They
+  work offline, on made-up jobs, and send nothing.
+- [`docs/ROUTINES.md`](docs/ROUTINES.md) — everything that happens by itself.
+
+**If you want to know how it works**
+
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — how it works, and why.
+- [`docs/APPLY-METHOD.md`](docs/APPLY-METHOD.md) — how one application gets from
+  "found" to "confirmed", and every place it is allowed to stop.
+- [`docs/CAPABILITY-MATRIX.md`](docs/CAPABILITY-MATRIX.md) — what it does, what
+  it does not, and why not.
+- [`docs/MIGRATION.md`](docs/MIGRATION.md) — moving in, moving your things, and
+  the portability checks.
 - [`agents/`](agents/) — the prompt for each role.
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) — development, tests, writing a plugin.
+- [`CHANGELOG.md`](CHANGELOG.md) — what changed, and what to do about it.
 
 ## Licence
 

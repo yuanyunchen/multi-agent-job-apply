@@ -126,11 +126,18 @@ conversation:
 jobpilot setup                    # add --force to go through the questions again
 ```
 
-It covers: the jobs they want most and would still take; locations and whether
-remote is fine; visa sponsorship; years of experience; companies to avoid;
-companies to hold for their decision; how far back to look; which companies' job
-pages to watch; which helpers and models to switch on; where and when the daily
-summary arrives; and how much detail they want to see.
+It covers: who they are on a form; **where their CV is** (only the path is
+stored — the file is never copied); the jobs they want most and would still
+take; locations and whether remote is fine; visa sponsorship; years of
+experience; companies to avoid; companies to hold for their decision; how far
+back to look; which companies' job pages to watch; which helpers and models to
+switch on; where and when the daily summary arrives; how much detail they want
+to see; and lastly **the answer bank** — the handful of answers every form
+asks for, written to `config/answers.yaml` beside their settings.
+
+Anything they leave blank in the answer bank **stops and asks them** instead of
+being guessed, and a national insurance number or date of birth always stops.
+Relay that, so they understand a blank is a choice and not a gap.
 
 **Do not re-explain how to relay this here — follow
 [`agents/bootstrap.md`](agents/bootstrap.md) steps 2–5** (also in
@@ -152,9 +159,16 @@ user signs in, in their own browser. You only check that it worked.** Wait for
 them to say "done" before checking. If they skip one, say plainly which features
 stay off.
 
-> ⚠️ `jobpilot logins --non-interactive` only checks *settings*, not real login
-> state. **Never report a platform as signed in based on the non-interactive
-> run** — it cannot see the browser.
+> ⚠️ `jobpilot logins --non-interactive` deliberately **never reports a platform
+> as signed in**, because nobody is there to sign in. It reads the list out and
+> says what the settings look like, and nothing more.
+>
+> With somebody present, a check only says *ready* when something actually
+> reached the platform read-only — the mailbox was read, the model tool was
+> asked, or a browser-capable model opened the page and reported the account it
+> saw. Settings that merely look right come back as "set up, but I have not
+> watched you sign in". **Relay that distinction rather than rounding it up to
+> ready.**
 
 ## 5. Practice run and hand over
 
@@ -251,3 +265,8 @@ nothing can reach the real world:
 pip install -e ".[dev]"
 JOBPILOT_TEST=1 python -m pytest -q
 ```
+
+The package is at `src/jobpilot/`, the timetable at `routines/routines.yaml`,
+and `make test sanitize migration-check` is what CI runs. Before reading the
+code, [`docs/CAPABILITY-MATRIX.md`](docs/CAPABILITY-MATRIX.md) tells you what
+is here and what is deliberately not.

@@ -32,7 +32,7 @@ from pathlib import Path
 os.environ["JOBPILOT_TEST"] = "1"
 
 REPO = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(REPO))
+sys.path.insert(0, str(REPO / "src"))
 
 from jobpilot.cli import main  # noqa: E402
 from jobpilot.providers.fake import FakeProvider  # noqa: E402
@@ -239,11 +239,17 @@ def section(title: str, command: str, body: str, *, fence: str = "text") -> str:
     return "\n".join([f"### {title}", "", f"```console", f"$ {command}", body.rstrip(), "```", ""])
 
 
+#: What the recording's own folder is called in the document. Deliberately not
+#: "jobpilot": a reader must not come away thinking the folder has to be called
+#: anything in particular, because nothing in the code assumes it is.
+FOLDER_IN_DOCS = "~/your-folder"
+
+
 def hide_machine_paths(text: str, workspace: Path) -> str:
     """Nothing in a public document may show where the recording happened."""
     text = text.replace(f"{workspace}/data", "~/.jobpilot")
-    text = text.replace(str(workspace), "~/jobpilot")
-    text = text.replace(str(REPO), "~/jobpilot")
+    text = text.replace(str(workspace), FOLDER_IN_DOCS)
+    text = text.replace(str(REPO), FOLDER_IN_DOCS)
     text = text.replace(str(Path.home()), "~")
     return text
 
