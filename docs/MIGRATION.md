@@ -3,7 +3,9 @@
 Everything here answers one question: **can somebody else clone this and run
 it?** The honest way to find out is to clone it into a folder with a different
 name, on a machine that knows nothing about the author, and watch what breaks.
-That is what `scripts/migration_check.sh` does, and what CI does on every push.
+That is what `scripts/migration_check.sh` does, and what the GitHub Actions
+workflow (`.github/workflows/ci.yml`) does on every push and every pull
+request.
 
 ---
 

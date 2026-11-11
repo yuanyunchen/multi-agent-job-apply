@@ -39,6 +39,7 @@ examples/            runnable, offline, synthetic
 docs/                architecture, capability matrix, migration, routines, apply method
 scripts/             setup, sanitize scan, migration check
 tools/               the sample-session recorder
+.github/workflows/   ci.yml - the same checks, on every push and pull request
 ```
 
 Two layout rules worth knowing:
@@ -72,6 +73,15 @@ Two rules about tests, both enforced by the suite itself:
 
 The suite also asserts that no test writes into the checkout's `config/`
 folder, and that no module contains a path from somebody's computer.
+
+## Continuous integration
+
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs on **every push and
+every pull request**: the suite on Python 3.10-3.12, the self-check against the
+example settings, the sanitize scan, the bot-template check, and the
+fresh-clone migration run. It is the same set of checks as
+`make test sanitize doctor migration-check`, so a green local run means a green
+CI run.
 
 Two more things the suite keeps honest, both of which have rotted in other
 projects:

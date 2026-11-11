@@ -189,6 +189,10 @@ caused it, and `jobpilot status --technical` shows the numbers behind everything
   import somewhere else, one folder each.
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) — development, tests, writing a plugin.
 - [`CHANGELOG.md`](CHANGELOG.md) — what changed, and what to do about it.
+- [`.github/workflows/ci.yml`](.github/workflows/ci.yml) — the checks that run
+  on every push and every pull request: the suite on Python 3.10-3.12, the
+  self-check, the sanitize scan, the bot-template check, and a fresh-clone
+  migration run.
 
 ## Licence
 

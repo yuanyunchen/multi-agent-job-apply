@@ -286,7 +286,7 @@ def test_every_document_the_readme_links_to_exists():
         "scripts/setup.sh",
         "scripts/sanitize_scan.py",
         "scripts/migration_check.sh",
-        "ci/github-actions-ci.yml",
+        ".github/workflows/ci.yml",
         "routines/routines.yaml",
         "config/preferences.example.yaml",
         "config/answers.example.yaml",
@@ -349,7 +349,7 @@ def test_the_changelog_says_what_moved_and_what_was_renamed():
 
 
 def test_the_workflow_runs_the_checks_it_should():
-    text = (REPO / "ci" / "github-actions-ci.yml").read_text(encoding="utf-8")
+    text = (REPO / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
     for needed in (
         "3.10",
         "3.11",
@@ -360,6 +360,25 @@ def test_the_workflow_runs_the_checks_it_should():
         "build_bot_templates.py",
     ):
         assert needed in text, needed
+
+
+def test_the_workflow_runs_on_every_push_and_every_pull_request():
+    """A workflow that only runs on one branch checks nothing on the others."""
+    text = (REPO / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    assert re.search(r"^on:", text, re.MULTILINE)
+    assert re.search(r"^\s+push:", text, re.MULTILINE)
+    assert re.search(r"^\s+pull_request:", text, re.MULTILINE)
+
+
+def test_nothing_points_at_the_place_the_workflow_used_to_be_kept():
+    """It is enabled now: a reader sent to ``ci/`` would find an empty promise."""
+    stale = [
+        str(path.relative_to(REPO))
+        for path in committed_files()
+        if "ci/github-actions-ci.yml" in path.read_text(encoding="utf-8", errors="ignore")
+    ]
+    assert stale == [], f"still pointing at the old location: {stale}"
+    assert not (REPO / "ci").exists(), "ci/ is left over from before the workflow was enabled"
 
 
 def test_the_migration_check_covers_the_templates_and_the_language_rule():

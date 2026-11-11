@@ -293,6 +293,7 @@ JOBPILOT_TEST=1 python -m pytest -q
 ```
 
 The package is at `src/jobpilot/`, the timetable at `routines/routines.yaml`,
-and `make test sanitize migration-check` is what CI runs. Before reading the
-code, [`docs/CAPABILITY-MATRIX.md`](docs/CAPABILITY-MATRIX.md) tells you what
+and `make test sanitize migration-check` is what CI runs — the workflow lives at
+`.github/workflows/ci.yml` and runs on every push and every pull request. Before
+reading the code, [`docs/CAPABILITY-MATRIX.md`](docs/CAPABILITY-MATRIX.md) tells you what
 is here and what is deliberately not.
