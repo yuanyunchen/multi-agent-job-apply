@@ -32,16 +32,20 @@ class SearchReport:
 
 
 def built_in_sources(config: Config) -> list[Source]:
-    """The no-login sources the user switched on."""
-    out: list[Source] = []
-    for family in FAMILIES:
-        block = config.section(f"search.sources.{family}")
-        if not block.get("enabled"):
-            continue
-        boards = [str(b).strip() for b in (block.get("boards") or []) if str(b).strip()]
-        if boards:
-            out.append(BoardSource(family=family, boards=boards))
-    return out
+    """The no-login sources the user switched on.
+
+    Read through :class:`~jobpilot.terms.Sources`, so a ``sources.yaml`` beside
+    the settings works exactly as well as the settings block — and either way it
+    is read fresh on every pass rather than baked in.
+    """
+    from ..terms import Sources
+
+    chosen = Sources.from_config(config)
+    return [
+        BoardSource(family=family, boards=chosen.boards[family])
+        for family in FAMILIES
+        if chosen.boards.get(family)
+    ]
 
 
 def plugin_sources(config: Config, provider=None) -> list[Source]:

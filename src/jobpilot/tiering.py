@@ -29,6 +29,7 @@ from typing import Any, Iterable, Protocol, runtime_checkable
 from .config import Config
 from .domain import Flag, HardExclude, Job, Tier, squeeze
 from .rules import evaluate
+from .terms import Terms
 
 #: ``excluded`` is the user's own "never this" list; ``irrelevant`` is what the
 #: tracker records for anything that will never be queued, whatever the reason.
@@ -89,35 +90,25 @@ class NoHook:
 # -- the rule layer -------------------------------------------------------
 
 
-def _terms(config: Config, key: str) -> list[str]:
-    values = config.get(f"search.categories.{key}", []) or []
-    return [str(term).strip() for term in values if str(term).strip()]
-
-
-def _matches(title: str, terms: Iterable[str]) -> str:
-    """The first term that appears in the title, or ``""``.
-
-    Substring matching is right here and wrong for company names: a user who
-    lists "Data Engineer" means titles containing it, but a user who excludes
-    "Acme" does not mean "Acme Robotics Holdings".
-    """
-    low = (title or "").lower()
-    return next((term for term in terms if term.lower() in low), "")
-
-
-def rule_tier(job: Job, config: Config) -> tuple[Tier, str]:
+def rule_tier(job: Job, config: Config, terms: Terms | None = None) -> tuple[Tier, str]:
     """``(tier, why)`` from the title and the user's own term lists.
 
-    An unknown title is ``non_core``, not ``irrelevant``: a title nobody listed
-    is a question for a model, not a reason to throw a job away.
+    The lists come from :class:`~jobpilot.terms.Terms`, which reads them fresh
+    every time — from the settings, or from a ``search_terms.json`` beside them.
+    There is one reader, because the same list in two places drifts.
+
+    Substring matching is right for titles and wrong for company names: someone
+    who lists "Data Engineer" means titles containing it, but someone who
+    excludes "Acme" does not mean "Acme Robotics Holdings".
     """
-    excluded = _matches(job.title, _terms(config, "excluded"))
+    chosen = terms if terms is not None else Terms.from_config(config)
+    excluded = chosen.matched(job.title, "exclude")
     if excluded:
         return "irrelevant", f"the title matches your never-apply list ({excluded})"
-    core = _matches(job.title, _terms(config, "core"))
+    core = chosen.matched(job.title, "core")
     if core:
         return "core", f"the title matches one of the jobs you want most ({core})"
-    non_core = _matches(job.title, _terms(config, "non_core"))
+    non_core = chosen.matched(job.title, "non_core")
     if non_core:
         return "non_core", f"the title matches a job you would still take ({non_core})"
     return "non_core", "the title is not on any of your lists, so I kept it for a closer look"
@@ -132,16 +123,20 @@ def classify(
     *,
     hook: TierHook | None = None,
     liveness: dict[str, dict[str, Any]] | None = None,
+    terms: Terms | None = None,
 ) -> list[TierDecision]:
     """Tier every job. Rules first, then the hook for whatever is left."""
     liveness = liveness or {}
+    # Read once per batch, not once per job: the lists are the same for all of
+    # them, and a file read per posting is a file read per posting.
+    chosen = terms if terms is not None else Terms.from_config(config)
     rules: dict[str, tuple[Tier, str, tuple[Flag, ...], HardExclude | None]] = {}
     decided: dict[str, TierDecision] = {}
     undecided: list[Job] = []
 
     for job in jobs:
         result = evaluate(job, config, liveness=liveness.get(job.job_id))
-        tier, why = rule_tier(job, config)
+        tier, why = rule_tier(job, config, chosen)
         rules[job.job_id] = (tier, why, result.flags, result.hard_exclude)
 
         if result.hard_exclude is not None:

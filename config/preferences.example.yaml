@@ -32,11 +32,14 @@ identity:
   linkedin_url: ""
   github_url: ""
 
-# Your documents. Paths are relative to the repository root unless absolute.
+# Your documents. A relative path is relative to THIS file's folder, so your
+# answers and notes live next to your settings wherever you keep them. An
+# absolute path (or one starting with ~) works too, and is usually what you
+# want for your CV.
 documents:
-  resume: "config/resumes/{{RESUME_FILE}}"
-  answers: "config/answers.yaml" # the answer bank: see config/answers.example.yaml
-  background_notes: "config/background.md" # facts a model may use in short essays
+  resume: "~/documents/{{RESUME_FILE}}" # only the path is stored; the file stays put
+  answers: "answers.yaml" # your answer bank: see config/answers.example.yaml
+  background_notes: "background.md" # facts a model may use in short free-text answers
 
 # Your own status only. Which posting sentences disqualify a role is logic
 # (src/jobpilot/rules.py) and is the same for everyone.

@@ -396,3 +396,143 @@ def test_a_placeholder_board_name_is_not_a_board():
 
     data = _merge(DEFAULTS, {"search": {"sources": {"lever": {"boards": ["{{BOARD}}", "globex"]}}}})
     assert _boards_default(data) == ["globex:lever"]
+
+
+# -- the CV, and the answer bank -----------------------------------------
+
+
+def test_the_conversation_asks_where_the_cv_is():
+    from jobpilot.wizard import questions
+
+    keys = [q.key for q in questions(_merge(DEFAULTS, {}))]
+    assert "documents.resume" in keys
+    question = next(q for q in questions(_merge(DEFAULTS, {})) if q.key == "documents.resume")
+    assert "never copied into this project" in question.changes
+
+
+def test_only_the_path_to_the_cv_is_kept(tmp_path):
+    """The file stays where the person put it; nothing is copied anywhere."""
+    cv = tmp_path / "my-cv.pdf"
+    cv.write_text("not really a pdf", encoding="utf-8")
+    asker = ScriptedAsker(answers={"documents.resume": str(cv)}, quiet=True)
+    result = run(asker=asker, base=_merge(DEFAULTS, {}), write=False)
+    assert result.data["documents"]["resume"] == str(cv)
+    assert cv.read_text(encoding="utf-8") == "not really a pdf"
+
+
+def test_a_cv_that_is_not_where_they_said_is_pointed_out(tmp_path):
+    from jobpilot.wizard import warnings_for
+
+    data = _merge(DEFAULTS, {"documents": {"resume": str(tmp_path / "missing.pdf")}})
+    assert any("cannot find your CV" in w for w in warnings_for(data))
+
+
+def test_the_conversation_builds_the_answer_bank():
+    from jobpilot.wizard import answer_questions
+
+    keys = [q.key for q in answer_questions(_merge(DEFAULTS, {}))]
+    assert keys == [
+        "answers.work_authorization",
+        "answers.needs_sponsorship",
+        "answers.relocate",
+        "answers.start_date",
+        "answers.salary_expectation",
+        "answers.how_did_you_hear",
+    ]
+
+
+def test_the_answer_bank_defaults_follow_what_they_already_said():
+    from jobpilot.wizard import answer_questions
+
+    data = _merge(
+        DEFAULTS,
+        {
+            "work_authorization": {"authorized_to_work": False, "needs_sponsorship_now_or_later": True},
+            "timing": {"earliest_start_date": "2027-06-01"},
+        },
+    )
+    defaults = {q.key: q.default for q in answer_questions(data)}
+    assert defaults["answers.work_authorization"] == "No"
+    assert defaults["answers.needs_sponsorship"] == "Yes"
+    assert defaults["answers.start_date"] == "2027-06-01"
+
+
+def test_the_answer_bank_is_written_beside_the_settings(tmp_path):
+    settings_file = tmp_path / "preferences.yaml"
+    asker = ScriptedAsker(
+        answers={
+            "identity.apply_email": "sam@example.test",
+            "answers.relocate": "No",
+            "answers.salary_expectation": "Open to discussion",
+        },
+        quiet=True,
+    )
+    result = run(asker=asker, base=_merge(DEFAULTS, {}), destination=settings_file)
+    assert result.answers_saved_to == tmp_path / "answers.yaml"
+
+    written = yaml.safe_load(result.answers_saved_to.read_text(encoding="utf-8"))
+    by_id = {entry["id"]: entry["answer"] for entry in written["answers"]}
+    assert by_id["relocate"] == "No"
+    assert by_id["salary_expectation"] == "Open to discussion"
+    assert "authorized to work" in next(
+        e["match"] for e in written["answers"] if e["id"] == "work_authorization"
+    )
+
+
+def test_the_form_answers_are_not_mixed_into_the_settings(tmp_path):
+    """Two different kinds of thing, two files; the settings stay readable."""
+    settings_file = tmp_path / "preferences.yaml"
+    run(asker=ScriptedAsker(answers={}, quiet=True), base=_merge(DEFAULTS, {}), destination=settings_file)
+    saved = yaml.safe_load(settings_file.read_text(encoding="utf-8"))
+    assert "answers" not in saved
+
+
+def test_personal_identifiers_always_stop_however_the_file_is_edited(tmp_path):
+    from jobpilot.gates import AnswerBank
+    from jobpilot.wizard import write_answer_bank
+
+    path = write_answer_bank({"answers": {"relocate": "Yes"}}, tmp_path / "answers.yaml")
+    bank = AnswerBank.from_file(path)
+    assert bank.lookup("Are you willing to relocate?") is not None
+    for question in (
+        "Please enter your social security number.",
+        "What is your date of birth?",
+        "Passport number?",
+    ):
+        assert bank.lookup(question) is None, question
+
+
+def test_an_answer_left_blank_is_simply_not_written(tmp_path):
+    from jobpilot.wizard import answer_bank
+
+    written = answer_bank({"answers": {"relocate": "Yes", "salary_expectation": "  "}})
+    assert [entry["id"] for entry in written["answers"]] == ["relocate"]
+
+
+def test_no_answers_at_all_is_said_out_loud():
+    from jobpilot.wizard import warnings_for
+
+    data = _merge(DEFAULTS, {})
+    assert any("stop and wait for you" in w for w in warnings_for(data))
+
+
+def test_the_summary_mentions_the_cv_and_the_answers(tmp_path):
+    from jobpilot.wizard import summary_prose
+
+    data = _merge(
+        DEFAULTS,
+        {"documents": {"resume": "~/documents/cv.pdf"}, "answers": {"relocate": "Yes"}},
+    )
+    text = summary_prose(data)
+    assert "The CV I will attach: ~/documents/cv.pdf." in text
+    assert "whether you would move" in text
+
+
+def test_rewriting_the_answer_bank_keeps_the_old_one(tmp_path):
+    from jobpilot.wizard import write_answer_bank
+
+    path = write_answer_bank({"answers": {"relocate": "Yes"}}, tmp_path / "answers.yaml")
+    write_answer_bank({"answers": {"relocate": "No"}}, path)
+    spares = [p for p in tmp_path.iterdir() if "before-" in p.name]
+    assert len(spares) == 1
+    assert "Yes" in spares[0].read_text(encoding="utf-8")

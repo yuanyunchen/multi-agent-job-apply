@@ -117,9 +117,12 @@ def cmd_setup(args: argparse.Namespace) -> int:
 
 
 def _walk_logins(config: Config, asker, *, wait_for_user: bool = True) -> int:
-    from .logins import Checklist
+    from .logins import Checklist, LiveProbe
 
-    results = Checklist(config).walk(asker, wait_for_user=wait_for_user)
+    # The probe is what makes "ready" mean something: it opens the mailbox or
+    # the page and reports what it actually saw. Without somebody there to sign
+    # in, the walk ignores it and never claims a sign-in.
+    results = Checklist(config, probe=LiveProbe(config)).walk(asker, wait_for_user=wait_for_user)
     return 0 if all(r.state != "needs_help" for r in results) else 1
 
 
@@ -495,13 +498,17 @@ def _run_apply(config: Config, renderer: Renderer, args: argparse.Namespace) -> 
 
 def cmd_doctor(args: argparse.Namespace) -> int:
     """Check everything without touching a single account."""
+    from .accounts import AccountRegistry
     from .gates import AnswerBank, LaneGuard
     from .plugins import discover
     from .providers import ROLES, build_registry, role_words
     from .routines import all_routines
+    from .scheduler import resolve
     from .tracker import Tracker
+    from .watch import freshly_found, last_submit_from_rows, login_states_from_disk, tick
 
     problems = 0
+    rows: list[dict] = []
     try:
         config = load(args.config)
     except JobpilotError as exc:
@@ -530,6 +537,15 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     else:
         print("Your answers: none yet, so forms with questions will wait for you.")
 
+    resume = config.user_path("documents.resume")
+    if resume is None:
+        print("Your CV: I do not know where it is, so applications needing one will wait.")
+    elif resume.exists():
+        print("Your CV: fine (I know where it is, and I attach exactly that file).")
+    else:
+        problems += 1
+        print(f"Your CV: I cannot find it where you said it was ({resume}).")
+
     registry = build_registry(config)
     for role in ROLES:
         candidates = registry.candidates(role)
@@ -555,7 +571,38 @@ def cmd_doctor(args: argparse.Namespace) -> int:
         state = "on" if config.plugin_enabled(manifest.name) else "off"
         print(f"Helper '{manifest.name}': {state}.")
 
-    print(f"Timetable: {plural(len(all_routines(config)), 'routine')}.")
+    accounts = AccountRegistry.from_config(config)
+    waiting = accounts.needing_user()
+    if waiting:
+        print(f"Employer sign-ups: {plural(len(waiting), 'one')} is waiting for you.")
+        for account in waiting:
+            print(f"  - {account.words}")
+    else:
+        print("Employer sign-ups: nothing waiting for you.")
+
+    # Every timetable entry must have something behind it; an entry that cannot
+    # run is a promise that fails silently every time it comes due.
+    routines = all_routines(config)
+    unwired = [routine.name for routine in routines if resolve(routine.what) is None]
+    if unwired:
+        problems += 1
+        print(f"Timetable: {plural(len(unwired), 'thing')} is scheduled but cannot run.")
+    else:
+        print(f"Timetable: {plural(len(routines), 'routine')}, all of them ready to run.")
+
+    health = tick(
+        config,
+        rows=rows,
+        found_recently=freshly_found(rows),
+        last_submit_at=last_submit_from_rows(rows),
+        login_states=login_states_from_disk(config),
+    )
+    if health.healthy:
+        print("Health: nothing looks stuck.")
+    else:
+        print("Health:")
+        for alert in health.alerts:
+            print(f"  - {alert.detail}")
     allowed = [a for a in ("submit_applications", "send_outreach_messages", "post_public_comments")
                if config.permitted(a)]
     print(

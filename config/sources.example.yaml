@@ -1,0 +1,51 @@
+# ---------------------------------------------------------------------------
+# sources.example.yaml — where to look for openings.
+#
+# Copy this to config/sources.yaml and edit it, or let the setup conversation
+# fill it in for you. It is the long form of `search.sources` in your settings:
+# use whichever you prefer, and if both exist this file wins.
+#
+# Everything here reads a company's own PUBLIC job page. No account, no sign-in,
+# no API key. The "board" is the short name in the company's careers link:
+#
+#     https://job-boards.greenhouse.io/ACME-ROBOTICS/jobs/4001
+#                                      ^^^^^^^^^^^^^^
+#
+# None of the companies below exist; they are placeholders for your own.
+# ---------------------------------------------------------------------------
+
+sources:
+  greenhouse:
+    enabled: true
+    boards:
+      - acme-robotics
+      - northwind-analytics
+
+  lever:
+    enabled: true
+    boards:
+      - globex-systems
+
+  ashby:
+    enabled: false
+    boards: []
+
+# How hard to look. These are about politeness and patience, not about which
+# jobs count — that is decided by your settings and by reading each posting.
+limits:
+  # Stop asking one company's page for more after this many postings. A
+  # company with thousands of openings should not use up a whole pass.
+  per_board_max: 200
+  # Wait this long between requests to the same site. Being a good guest is
+  # cheaper than being blocked.
+  seconds_between_requests: 1.0
+  # Give up on one page after this long and carry on with the rest: one slow
+  # site must never stop the whole morning.
+  timeout_seconds: 20
+
+# What to do about a source that stops producing. "Found nothing" is a fact
+# worth knowing, not a silent success, so it is reported either way.
+health:
+  # After this many days with nothing at all, the weekly review suggests
+  # retiring it. It is never retired automatically.
+  quiet_days_before_suggesting: 7

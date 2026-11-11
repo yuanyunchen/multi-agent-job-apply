@@ -474,3 +474,49 @@ def test_technical_works_before_or_after_the_command():
     assert parser.parse_args(["routines", "list", "--technical"]).technical is True
     assert parser.parse_args(["status", "--technical"]).technical is True
     assert parser.parse_args(["status"]).technical is False
+
+
+# -- what the self-check reports -----------------------------------------
+
+
+def test_doctor_reports_the_cv_the_answers_and_the_health(settings_file, capsys):
+    assert run(["doctor"], settings_file) == 0
+    out = capsys.readouterr().out
+    for line in ("Your CV:", "Your answers:", "Employer sign-ups:", "Timetable:", "Health:"):
+        assert line in out, line
+    assert "all of them ready to run" in out
+
+
+def test_doctor_notices_a_cv_that_is_not_there(settings_file, capsys, tmp_path):
+    import yaml
+
+    data = yaml.safe_load(settings_file.read_text(encoding="utf-8"))
+    data["documents"] = {**data.get("documents", {}), "resume": str(tmp_path / "nowhere.pdf")}
+    settings_file.write_text(yaml.safe_dump(data), encoding="utf-8")
+    assert run(["doctor"], settings_file) == 1
+    assert "I cannot find it where you said it was" in capsys.readouterr().out
+
+
+def test_doctor_does_not_call_a_placeholder_a_missing_file(settings_file, capsys):
+    """"~/documents/{{RESUME_FILE}}" is not a file, so it is not a broken one."""
+    import yaml
+
+    data = yaml.safe_load(settings_file.read_text(encoding="utf-8"))
+    data["documents"] = {**data.get("documents", {}), "resume": "~/documents/{{RESUME_FILE}}"}
+    settings_file.write_text(yaml.safe_dump(data), encoding="utf-8")
+    assert run(["doctor"], settings_file) == 0
+    assert "I do not know where it is" in capsys.readouterr().out
+
+
+def test_doctor_says_when_an_employer_sign_up_needs_the_user(settings_file, capsys):
+    from jobpilot.accounts import AccountRegistry
+    from jobpilot.config import load
+
+    registry = AccountRegistry.from_config(load(settings_file))
+    registry.hand_back("acme", "phone")
+    registry.save()
+
+    assert run(["doctor"], settings_file) == 0
+    out = capsys.readouterr().out
+    assert "is waiting for you" in out
+    assert "text a code to your phone" in out

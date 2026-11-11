@@ -1,0 +1,61 @@
+{
+  "_README": [
+    "Job titles to search for, in groups. Copy this to config/search_terms.json",
+    "and edit it, or let the setup conversation fill it in for you.",
+    "",
+    "This file is read fresh on every search pass, never copied into the code, so",
+    "adding a term here changes the next search with no restart and no release.",
+    "",
+    "Every term in 'core' and 'non_core' is run as a search on every source that",
+    "takes a query — on its own, and again with each entry-level wording added.",
+    "A term listed here is IN FOCUS: no title rule may quietly drop it. Whether a",
+    "posting is too senior is decided by reading the whole description and quoting",
+    "it, never by the title alone.",
+    "",
+    "core      = applied to first, newest first.",
+    "non_core  = applied to once there is nothing in core left. It is allowed to",
+    "            wait indefinitely; that is the point.",
+    "exclude   = never applied to, whatever else matches.",
+    "levels    = wording added to each term to find entry-level versions of it.",
+    "seniority = title words that rule a posting out on their own. Other seniority",
+    "            language is context, and needs a quoted sentence."
+  ],
+
+  "core": [
+    "Machine Learning Engineer",
+    "AI Engineer",
+    "Applied Scientist",
+    "Research Engineer",
+    "MLOps Engineer"
+  ],
+
+  "non_core": [
+    "Software Engineer",
+    "Backend Engineer",
+    "Data Engineer",
+    "Data Scientist",
+    "Platform Engineer"
+  ],
+
+  "exclude": [
+    "Sales",
+    "Account Executive",
+    "Product Manager",
+    "Technician",
+    "Hardware",
+    "Recruiter"
+  ],
+
+  "levels": [
+    "New Grad",
+    "Entry Level",
+    "Early Career",
+    "Junior",
+    "Associate",
+    "I",
+    "II",
+    "University Graduate"
+  ],
+
+  "seniority": ["Senior", "Staff", "Principal", "Lead", "Manager", "Director", "Head of"]
+}

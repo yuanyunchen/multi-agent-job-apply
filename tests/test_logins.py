@@ -2,9 +2,21 @@ from __future__ import annotations
 
 import json
 
-from jobpilot.logins import Checklist, Result, check, steps, summary
+from jobpilot.logins import Checklist, Reach, Result, check, steps, summary
 from jobpilot.ui import PRODUCT_NAMES_OK, lint_plain
 from jobpilot.wizard import ScriptedAsker
+
+
+class Probe:
+    """A stand-in for the real check. ``answers`` maps a step name to what it found."""
+
+    def __init__(self, answers: dict[str, Reach]) -> None:
+        self.answers = answers
+        self.asked: list[str] = []
+
+    def reach(self, step) -> Reach | None:
+        self.asked.append(step.name)
+        return self.answers.get(step.name)
 
 
 def test_the_mailbox_is_always_the_first_sign_in(config):
@@ -33,19 +45,53 @@ def test_no_mailbox_connected_is_explained_without_blame(config):
     assert "stay 'sent'" in result.words
 
 
-def test_a_connected_mailbox_is_confirmed(make_config, tmp_path):
+def test_a_connected_mailbox_is_set_up_but_not_yet_proven(make_config, tmp_path):
+    """Configured is not the same as signed in, and saying so would be a guess."""
     config = make_config(verify={"mail_reader": "json_export", "mail_export_dir": str(tmp_path)})
-    assert check(config, steps(config)[0]).state == "confirmed"
+    result = check(config, steps(config)[0])
+    assert result.state == "unverified"
+    assert not result.ready
+    assert "have not watched you sign in" in result.words
 
 
-def test_a_helper_reports_its_own_readiness(make_config):
-    ready = make_config(plugins={"handshake": {"enabled": True, "school_name": "Example University"}})
-    step = next(s for s in steps(ready) if s.name == "handshake")
-    assert check(ready, step).state == "confirmed"
+def test_a_mailbox_that_really_answers_is_confirmed(make_config, tmp_path):
+    config = make_config(verify={"mail_reader": "json_export", "mail_export_dir": str(tmp_path)})
+    result = check(config, steps(config)[0], probe=Probe({"mailbox": Reach(True, "I read 3 messages")}))
+    assert result.state == "confirmed"
+    assert result.ready
+    assert "I read 3 messages" in result.words
 
+
+def test_a_mailbox_that_will_not_open_needs_help(make_config, tmp_path):
+    config = make_config(verify={"mail_reader": "json_export", "mail_export_dir": str(tmp_path)})
+    probe = Probe({"mailbox": Reach(False, "it asked me to sign in again")})
+    result = check(config, steps(config)[0], probe=probe)
+    assert result.state == "needs_help"
+    assert "sign in again" in result.detail
+
+
+def test_a_helper_that_is_not_configured_is_not_even_worth_probing(make_config):
     missing = make_config(plugins={"handshake": {"enabled": True, "school_name": ""}})
+    step = next(s for s in steps(missing) if s.name == "handshake")
     assert check(missing, step).state == "needs_help"
     assert "which school" in check(missing, step).detail
+
+
+def test_a_configured_helper_still_has_to_be_reached(make_config):
+    ready = make_config(plugins={"handshake": {"enabled": True, "school_name": "Example University"}})
+    step = next(s for s in steps(ready) if s.name == "handshake")
+    assert check(ready, step).state == "unverified"
+    assert check(ready, step, probe=Probe({"handshake": Reach(True, "it greeted you by name")})).ready
+    assert check(ready, step, probe=Probe({"handshake": Reach(False, "it showed a sign-in page")})).state == (
+        "needs_help"
+    )
+
+
+def test_a_probe_that_cannot_tell_never_claims_a_sign_in(make_config):
+    """"I could not look" and "you are signed in" are completely different answers."""
+    ready = make_config(plugins={"handshake": {"enabled": True, "school_name": "Example University"}})
+    step = next(s for s in steps(ready) if s.name == "handshake")
+    assert check(ready, step, probe=Probe({})).state == "unverified"
 
 
 def test_a_helper_that_is_off_is_not_chased(make_config):
@@ -122,5 +168,30 @@ def test_the_end_of_the_input_is_treated_the_same_way(config, monkeypatch):
 def test_saying_done_still_checks(config):
     asker = ScriptedAsker(answers={"login.mailbox": "done", "login.claude": "done"}, quiet=True)
     states = {r.name: r.state for r in Checklist(config).walk(asker)}
-    assert states["claude"] in ("confirmed", "needs_help")
+    assert states["claude"] in ("unverified", "needs_help")
     assert states["mailbox"] == "unavailable"
+
+
+def test_saying_done_with_something_that_can_look_gets_a_real_answer(config):
+    asker = ScriptedAsker(answers={"login.mailbox": "done", "login.claude": "done"}, quiet=True)
+    probe = Probe({"claude": Reach(True, "the tool itself says you are signed in")})
+    states = {r.name: r.state for r in Checklist(config, probe=probe).walk(asker)}
+    assert states["claude"] == "confirmed"
+
+
+def test_a_non_interactive_run_never_reports_a_sign_in(config):
+    """Nobody is there to sign in, so "ready" could only ever be a guess."""
+    probe = Probe({"claude": Reach(True, "signed in"), "mailbox": Reach(True, "read 3")})
+    asker = ScriptedAsker(answers={}, quiet=True)
+    results = Checklist(config, probe=probe).walk(asker, wait_for_user=False)
+    assert all(not r.ready for r in results), [r.state for r in results]
+    said = "\n".join(asker.transcript)
+    assert "I will not call anything ready" in said
+
+
+def test_the_probe_is_used_when_somebody_is_there(config):
+    probe = Probe({"claude": Reach(True, "signed in")})
+    Checklist(config, probe=probe).walk(
+        ScriptedAsker(answers={"login.claude": "done", "login.mailbox": "skip"}, quiet=True)
+    )
+    assert probe.asked == ["claude"]

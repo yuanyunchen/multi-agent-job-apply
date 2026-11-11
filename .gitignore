@@ -57,3 +57,8 @@ dist/
 
 # ---------------------------------------------------------------------------
 # ---------------------------------------------------------------------------
+
+# the user's own lists, when they keep them in files of their own
+config/answers.before-*.yaml
+config/search_terms.json
+config/sources.yaml

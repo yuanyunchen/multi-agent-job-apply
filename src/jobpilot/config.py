@@ -58,7 +58,7 @@ DEFAULTS: dict[str, Any] = {
         "linkedin_url": "",
         "github_url": "",
     },
-    "documents": {"resume": "", "answers": "config/answers.yaml", "background_notes": ""},
+    "documents": {"resume": "", "answers": "answers.yaml", "background_notes": ""},
     "work_authorization": {
         "authorized_to_work": True,
         "needs_sponsorship_now_or_later": True,
@@ -214,6 +214,20 @@ def expand(raw: str) -> Path:
     return Path(os.path.expandvars(str(raw))).expanduser()
 
 
+#: ``{{RESUME_FILE}}`` and friends, left behind by the example settings.
+_PLACEHOLDER = re.compile(r"\{\{[^}]*\}\}")
+
+
+def has_placeholder(value: Any) -> bool:
+    """Is this still a slot in the example rather than a real answer?
+
+    ``~/documents/{{RESUME_FILE}}`` is not a file. Treating it as one would mean
+    reporting a missing CV as a broken installation, or worse, trying to attach
+    it to an application. A value with a placeholder in it counts as unset.
+    """
+    return isinstance(value, str) and bool(_PLACEHOLDER.search(value))
+
+
 def _merge(base: Any, override: Any) -> Any:
     """Override on top of base, copying all the way down.
 
@@ -269,10 +283,32 @@ class Config:
     def repo_path(self, dotted: str) -> Path | None:
         """A configured path that is relative to the repository root, not data_dir."""
         raw = self.get(dotted)
-        if not raw:
+        if not raw or has_placeholder(raw):
             return None
         path = expand(str(raw))
         return path if path.is_absolute() else (repo_root() / path)
+
+    def user_path(self, dotted: str) -> Path | None:
+        """A configured path belonging to the user, resolved **next to their settings**.
+
+        The user's own files — their answer bank, their notes, their CV — live
+        beside the settings file, wherever that is. Resolving them against the
+        repository instead would put somebody's private answers inside a git
+        checkout, and would break the moment they moved their settings
+        elsewhere with ``JOBPILOT_CONFIG``.
+        """
+        raw = self.get(dotted)
+        if not raw or has_placeholder(raw):
+            return None
+        path = expand(str(raw))
+        if path.is_absolute():
+            return path
+        base = Path(self.source).parent if self.source else (repo_root() / "config")
+        # Kindness to settings written before these paths moved: "config/x" next
+        # to a settings file already inside "config" means the same file.
+        if base.name == "config" and path.parts[:1] == ("config",):
+            path = Path(*path.parts[1:])
+        return base / path
 
 
 #: Files that mark the top of a checkout. ``pyproject.toml`` alone is not

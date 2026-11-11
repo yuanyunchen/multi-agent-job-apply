@@ -75,7 +75,7 @@ class AnswerBank:
 
     @classmethod
     def from_config(cls, config: Config) -> "AnswerBank":
-        return cls.from_file(config.repo_path("documents.answers"))
+        return cls.from_file(config.user_path("documents.answers"))
 
     def lookup(self, question: str) -> Answer | None:
         """The answer for this question, or ``None`` if the user never gave one."""

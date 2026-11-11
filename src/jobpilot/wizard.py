@@ -286,6 +286,14 @@ def questions(data: dict[str, Any]) -> list[Question]:
             topic="where you live",
         ),
         Question(
+            "documents.resume",
+            "Where is your CV? Give me the path to the file and I will attach exactly that one.",
+            _plain(get("documents.resume")),
+            "I remember only where it is. The file stays where you put it, is never copied into "
+            "this project, and only ever leaves your computer attached to an application.",
+            topic="your CV",
+        ),
+        Question(
             "search.categories.core",
             "What kind of jobs do you want most? Give me a few job titles.",
             _plain_list(get("search.categories.core")) or ["Software Engineer", "Machine Learning Engineer"],
@@ -498,6 +506,138 @@ def followups(data: dict[str, Any]) -> list[Question]:
     return out
 
 
+# -- the answer bank ------------------------------------------------------
+#
+# Forms ask the same handful of questions over and over. Writing the answers
+# down once is the difference between an application finishing by itself and an
+# application stopping to ask. Nothing here is guessed: every answer below comes
+# from the person, and a question with no answer on file always stops.
+
+#: Questions that always stop and wait, whatever is written down. A personal
+#: identifier is never answered automatically, by anybody, for any reason.
+ALWAYS_ASK = (
+    "social security",
+    "date of birth",
+    "driver's license number",
+    "passport number",
+)
+
+
+def answer_questions(data: dict[str, Any]) -> list[Question]:
+    """The answer bank, asked as plain questions with answers already implied.
+
+    Most of these can be worked out from what the person has already said, so
+    they are offered as defaults and usually just confirmed.
+    """
+    here = Config(data)
+    authorized = bool(here.get("work_authorization.authorized_to_work", True))
+    sponsorship = bool(here.get("work_authorization.needs_sponsorship_now_or_later", True))
+    start = _plain(here.get("timing.earliest_start_date"))
+
+    return [
+        Question(
+            "answers.work_authorization",
+            "Forms ask: are you allowed to work in the country you are applying in?",
+            "Yes" if authorized else "No",
+            "This exact wording goes into the form. If it is ever not true, say so now — I will "
+            "never answer it untruthfully for you.",
+            topic="whether you are allowed to work",
+        ),
+        Question(
+            "answers.needs_sponsorship",
+            "And: will you need the company to sponsor a visa, now or in future?",
+            "Yes" if sponsorship else "No",
+            "The honest answer, every time. A posting that accepts the permit you already have is "
+            "still a normal job, so this answer does not narrow your search.",
+            topic="whether you need sponsorship",
+        ),
+        Question(
+            "answers.relocate",
+            "Would you move for the right job?",
+            "Yes",
+            "Answered as you say it here. 'No' is a perfectly good answer and costs you nothing.",
+            topic="whether you would relocate",
+        ),
+        Question(
+            "answers.start_date",
+            "What is the earliest date you could start? (like 2027-06-01)",
+            start,
+            "Typed into the date box. Where a form offers a list instead, I pick the nearest date "
+            "after this one and read the choice back.",
+            topic="your earliest start date",
+        ),
+        Question(
+            "answers.salary_expectation",
+            "If a form insists on a salary expectation, what should I put?",
+            "Open, and happy to discuss the range for this role.",
+            "Only used where the box cannot be left empty. Give a number if you would rather.",
+            topic="what to say about salary",
+        ),
+        Question(
+            "answers.how_did_you_hear",
+            "And when they ask how you heard about the job?",
+            "Company careers page",
+            "I record where each job really came from, so this stays truthful.",
+            topic="how you heard about the job",
+        ),
+    ]
+
+
+#: The phrases each answer is matched against when a form asks something.
+ANSWER_MATCHES: dict[str, list[str]] = {
+    "work_authorization": ["authorized to work", "legally authorized", "right to work"],
+    "needs_sponsorship": ["sponsorship", "require sponsorship", "visa support"],
+    "relocate": ["willing to relocate", "open to relocation"],
+    "start_date": ["earliest start", "start date", "available to start"],
+    "salary_expectation": ["salary expectation", "compensation expectation", "desired salary"],
+    "how_did_you_hear": ["how did you hear", "how did you find"],
+}
+
+
+def answer_bank(data: dict[str, Any]) -> dict[str, Any]:
+    """The answer bank as it will be written, from the answers already gathered."""
+    answers = []
+    for key, phrases in ANSWER_MATCHES.items():
+        value = str(Config(data).get(f"answers.{key}", "") or "").strip()
+        if not value:
+            continue  # no answer means the form stops and asks, which is correct
+        answers.append({"id": key, "match": phrases, "answer": value})
+    return {"answers": answers, "always_ask": list(ALWAYS_ASK)}
+
+
+def write_answer_bank(data: dict[str, Any], destination: Path) -> Path:
+    """Write ``config/answers.yaml``. Not committed, and never overwritten blindly."""
+    destination = Path(destination)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    if destination.exists():
+        backup_settings(destination)
+    header = (
+        "# Your answer bank, written by jobpilot setup.\n"
+        "#\n"
+        "# A form question is answered ONLY from this file. A question that is not\n"
+        "# here stops that application and asks you; nothing is ever guessed.\n"
+        "#\n"
+        "# 'match' lists wording that may appear in the question. Everything under\n"
+        "# 'always_ask' stops and waits for you however this file is edited.\n"
+    )
+    destination.write_text(
+        header + yaml.safe_dump(answer_bank(data), sort_keys=False, allow_unicode=True),
+        encoding="utf-8",
+    )
+    return destination
+
+
+def answers_destination(data: dict[str, Any], settings_file: Path | None = None) -> Path:
+    """Where the answer bank goes: beside the settings file, never hardcoded.
+
+    Somebody's form answers are as private as their settings, so they live in
+    the same folder — which for most people is inside the checkout and
+    gitignored, and for anyone using ``JOBPILOT_CONFIG`` is wherever they put
+    their settings instead.
+    """
+    return Config(data, settings_file).user_path("documents.answers") or Path("answers.yaml")
+
+
 def _plain(value: Any) -> str:
     """Treat a leftover ``{{PLACEHOLDER}}`` from the example file as empty.
 
@@ -562,6 +702,9 @@ class WizardResult:
     confirmed: bool = False
     warnings: list[str] = field(default_factory=list)
     transcript: list[str] = field(default_factory=list)
+    #: Where the form answers went. They live in their own file, not in the
+    #: settings, and that file is never committed.
+    answers_saved_to: Path | None = None
 
 
 def _assign(data: dict[str, Any], dotted: str, value: Any) -> None:
@@ -592,7 +735,7 @@ def interview(data: dict[str, Any], asker: Asker, *, only: str = "") -> dict[str
     """
     selected: list[str] = []
     asked_about_switches = False
-    plan = questions(data) if not only else [*questions(data), *followups(data)]
+    plan = questions(data) if not only else [*questions(data), *followups(data), *answer_questions(data)]
 
     for question in plan:
         targeted = (not only) or only in (question.key, question.topic_name)
@@ -624,6 +767,19 @@ def interview(data: dict[str, Any], asker: Asker, *, only: str = "") -> dict[str
         catalog.Selection(chosen=selected).apply_to(data)
         # Now that we know what is on, ask the few things that depend on it.
         for question in followups(data):
+            _assign(data, question.key, parse_answer(question, asker.ask(question)))
+
+    if not only:
+        # The answer bank, last: these questions read better once the person's
+        # situation is already on the table, and most of them are just a yes.
+        asker.say("")
+        asker.say(
+            "Last part. Forms ask the same few questions over and over, so let us write your "
+            "answers down once. Anything you leave blank will stop and ask you instead of being "
+            "guessed at, and I will never answer a national insurance or date-of-birth question "
+            "by myself."
+        )
+        for question in answer_questions(data):
             _assign(data, question.key, parse_answer(question, asker.ask(question)))
 
     data.update(strip_placeholders(data))
@@ -667,6 +823,8 @@ def summary_prose(data: dict[str, Any]) -> str:
         f" · {get('identity.apply_email') or 'no email yet'}"
         f" · {get('identity.phone') or 'no phone number yet'}"
         f" · {get('identity.current_location') or 'no location yet'}.",
+        f"The CV I will attach: {get('documents.resume') or 'you have not told me where it is yet'}.",
+        f"Form answers I will have ready: {_answers_words(data)}.",
         f"Jobs I will go after first: {listing('search.categories.core')}.",
         f"Jobs I will apply to after those: {listing('search.categories.non_core')}.",
         f"Jobs I will never apply to: {listing('search.categories.excluded')}.",
@@ -695,6 +853,22 @@ def summary_prose(data: dict[str, Any]) -> str:
         "reset a password, or change one of these settings without asking you.",
     ]
     return "\n".join(lines)
+
+
+def _answers_words(data: dict[str, Any]) -> str:
+    """"four of the six questions forms usually ask" — in plain words."""
+    written = answer_bank(data)["answers"]
+    if not written:
+        return "none yet, so every form question will stop and ask you"
+    names = {
+        "work_authorization": "whether you may work there",
+        "needs_sponsorship": "whether you need sponsorship",
+        "relocate": "whether you would move",
+        "start_date": "when you could start",
+        "salary_expectation": "what to say about salary",
+        "how_did_you_hear": "how you heard about the job",
+    }
+    return ", ".join(names.get(entry["id"], entry["id"]) for entry in written)
 
 
 def prose_echo(data: dict[str, Any], path: Path) -> str:
@@ -731,10 +905,21 @@ def warnings_for(data: dict[str, Any]) -> list[str]:
             "I have nowhere to look yet. Name a few companies whose job pages I should watch, "
             "or switch on one of the helpers."
         )
-    if not config.get("documents.resume"):
+    resume = str(config.get("documents.resume") or "")
+    if not resume:
         out.append(
             "I do not know where your CV is yet. Tell me where it is and I will attach exactly "
             "that file, and never a different version."
+        )
+    elif not config.user_path("documents.resume").exists():
+        out.append(
+            "I cannot find your CV where you said it was, so applications that need it will wait. "
+            "Say 'change your CV' and give me the right place."
+        )
+    if not answer_bank(data)["answers"]:
+        out.append(
+            "I have no answers written down for the questions forms ask, so every one of them "
+            "will stop and wait for you."
         )
     if catalog.is_enabled(config, catalog.find("fake")):
         out.append(
@@ -792,6 +977,12 @@ def run(
         asker.say("Nothing saved — your settings are exactly as they were.")
         return result
 
+    # The form answers live in their own file, not in the settings: they are a
+    # different kind of thing, they are read by a different part of the system,
+    # and keeping them separate means the settings file stays something a person
+    # can read in one sitting.
+    bank = data.pop("answers", None)
+
     try:
         config = validate(data, destination)
     except ConfigError as exc:
@@ -804,6 +995,15 @@ def run(
         result.backup = backup_settings(destination)
         write_config(config, destination)
         result.saved_to = destination
+        if bank:
+            result.answers_saved_to = write_answer_bank(
+                {"answers": bank}, answers_destination(data, destination)
+            )
+            written = answer_bank({"answers": bank})["answers"]
+            asker.say(
+                f"I have written down {plural(len(written), 'answer')} to the questions forms ask. "
+                "Anything not on that list stops and asks you."
+            )
         asker.say(prose_echo(data, destination))
         if result.backup:
             asker.say("Your previous answers are kept alongside, in case you want them back.")
