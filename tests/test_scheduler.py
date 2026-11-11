@@ -19,7 +19,7 @@ def window(text="09:30-18:00", days="mon-fri", every_minutes=None, name="apply")
     schedule = {"window": text, "days": days}
     if every_minutes:
         schedule["every_minutes"] = every_minutes
-    return Routine(name=name, schedule=schedule, what="apply.waves", description="")
+    return Routine(name=name, schedule=schedule, what="apply.pass", description="")
 
 
 def every(text="2 hours", name="mail"):
@@ -106,7 +106,7 @@ def test_run_due_runs_the_due_things_and_nothing_else(config, capsys):
     report = run_due(config, now=MONDAY_8AM, actions=fake_actions(log))
     assert "daily_email" in report.ran
     assert "find_jobs" in report.ran  # 07:30, so it is late but still today's
-    assert "suggestions" not in report.ran  # Monday 10:00, not yet
+    assert "weekly_review" not in report.ran  # Monday 10:00, not yet
     assert log
 
 

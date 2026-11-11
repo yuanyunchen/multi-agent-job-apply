@@ -12,6 +12,27 @@ person — you report to the lead.
 3. Let the same checks run over every row, whatever source it came from. There
    is one set of rules, and it is not yours to re-implement.
 
+## Two lanes
+
+Searching well means doing two quite different things, so the role has two
+lanes. They are the *same* role, with the same rules and the same screening
+code — the lanes differ only in where they look and how deep they go.
+
+| lane | where it looks | what it is for |
+|---|---|---|
+| **wide** | job boards and aggregators, platform job pages, and any helper that is switched on | recall. Cover as much ground as possible, accept duplicates, and let the de-duplication sort it out. May use a platform's own one-click apply where that is switched on. |
+| **deep** | employers' own application systems directly, plus startup and company indexes | depth and freshness. Read the employer's own words rather than an aggregator's copy, and catch postings that never reach a board. |
+
+Run the wide lane first: its results tell the deep lane which employers are
+worth reading directly. Record which lane found each row — when something stops
+working, "one lane is dead" and "nothing is working" look identical in a single
+total and need completely different answers.
+
+**One set of rules for both lanes.** Neither lane has its own copy of the title
+rules, the eligibility rules or the tiering. Keeping two copies is how they
+drifted apart twice: a job the wide lane kept, the deep lane dropped, and
+nobody could say which was right.
+
 ## De-duplication
 
 A posting is the same posting if **either** the cleaned-up link matches **or**

@@ -152,6 +152,103 @@ def reflection(rows: Iterable[dict], *, notes: str = "", today: date | None = No
     return "\n".join(body) + "\n"
 
 
+# -- the weekly look back -------------------------------------------------
+
+
+@dataclass
+class WeeklyReview:
+    """What the week produced, broken down by where the jobs came from."""
+
+    week_of: str = ""
+    found: int = 0
+    applied: int = 0
+    waiting: int = 0
+    confirmed_rate: float = 0.0
+    replies: int = 0
+    by_source: dict[str, int] = field(default_factory=dict)
+    by_system: dict[str, int] = field(default_factory=dict)
+    dead_sources: list[str] = field(default_factory=list)
+    blocked_by_system: dict[str, int] = field(default_factory=dict)
+
+    def words(self) -> str:
+        """What the user reads on a Monday morning."""
+        lines = [f"Your week, to {self.week_of}:", ""]
+        lines.append(
+            f"- {plural(self.applied, 'application')} went out, "
+            f"{self.waiting} are waiting for a reply, and "
+            f"{plural(self.replies, 'reply', 'replies')} came back."
+        )
+        if self.by_source:
+            best = sorted(self.by_source.items(), key=lambda kv: (-kv[1], kv[0]))[:3]
+            lines.append(
+                "- Most of what I found came from: "
+                + ", ".join(f"{name} ({count})" for name, count in best)
+                + "."
+            )
+        if self.dead_sources:
+            lines.append("- These turned up nothing at all: " + ", ".join(self.dead_sources) + ".")
+        if self.blocked_by_system:
+            worst = sorted(self.blocked_by_system.items(), key=lambda kv: (-kv[1], kv[0]))[0]
+            lines.append(
+                f"- One kind of application form stopped me {worst[1]} times, "
+                "and I will suggest what to do about it."
+            )
+        lines.append(
+            f"- Of the applications I can check, {self.confirmed_rate:.0%} were confirmed as arrived."
+        )
+        return "\n".join(lines)
+
+    def notes(self) -> str:
+        """The same week for the record, with the numbers kept in full."""
+        return "\n".join(
+            [
+                f"## week to {self.week_of}",
+                f"- found: {self.found}; applied: {self.applied}; waiting: {self.waiting}",
+                f"- confirmed rate: {self.confirmed_rate:.2f}",
+                f"- by source: {self.by_source}",
+                f"- by application system: {self.by_system}",
+                f"- blocked by system: {self.blocked_by_system}",
+                f"- sources with nothing: {self.dead_sources}",
+            ]
+        )
+
+
+def weekly_review(
+    rows: Iterable[dict], config: Config | None = None, *, today: date | None = None
+) -> WeeklyReview:
+    """Go over the week by source and by application system.
+
+    Splitting it that way is the whole point: "nothing is working" and "one
+    source has gone quiet" look identical in a single total, and they need
+    completely different answers.
+    """
+    rows = list(rows)
+    numbers = summarize(rows)
+    rate, _unconfirmed, considered = unconfirmed_rate(rows)
+    review = WeeklyReview(
+        week_of=(today or date.today()).isoformat(),
+        found=len(rows),
+        applied=numbers.applied + numbers.sent_waiting,
+        waiting=numbers.sent_waiting,
+        confirmed_rate=(1.0 - rate) if considered else 0.0,
+        replies=numbers.interviews + numbers.assessments + numbers.rejections,
+    )
+    for row in rows:
+        source = str(row.get("source") or "somewhere")
+        review.by_source[source] = review.by_source.get(source, 0) + 1
+        system = str(row.get("ats") or "a company's own site")
+        review.by_system[system] = review.by_system.get(system, 0) + 1
+        if normalize_status(row.get("status")) == "blocked":
+            review.blocked_by_system[system] = review.blocked_by_system.get(system, 0) + 1
+
+    if config is not None:
+        for family in ("greenhouse", "lever", "ashby"):
+            block = config.section(f"search.sources.{family}")
+            if block.get("enabled") and not review.by_source.get(family):
+                review.dead_sources.append(family)
+    return review
+
+
 def append_reflection(config: Config, text: str) -> None:
     path = config.paths.ensure().reflections
     with open(path, "a", encoding="utf-8") as handle:

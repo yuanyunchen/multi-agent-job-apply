@@ -98,3 +98,68 @@ def test_a_reflection_records_the_unconfirmed_share():
     text = reflection(rows(), notes="one site kept stopping me", today=TODAY)
     assert "unconfirmed: 1 of 5" in text
     assert "one site kept stopping me" in text
+
+
+# -- the weekly look back -------------------------------------------------
+
+
+def test_the_week_is_broken_down_by_where_the_jobs_came_from(config):
+    """"Nothing is working" and "one source has gone quiet" need different answers."""
+    from datetime import date
+
+    from jobpilot.report import weekly_review
+
+    rows = [
+        {"job_id": "1", "status": "applied", "source": "greenhouse", "ats": "greenhouse",
+         "url": "https://example.test/1",
+         "receipt": {"mail_id": "m", "basis": "b", "matched_at": "2026-11-10"}},
+        {"job_id": "2", "status": "submitted", "source": "greenhouse", "ats": "greenhouse",
+         "url": "https://example.test/2"},
+        {"job_id": "3", "status": "blocked", "source": "lever", "ats": "workday",
+         "url": "https://example.test/3"},
+    ]
+    review = weekly_review(rows, config, today=date(2026, 11, 9))
+    assert review.by_source == {"greenhouse": 2, "lever": 1}
+    assert review.by_system["workday"] == 1
+    assert review.blocked_by_system == {"workday": 1}
+    assert review.applied == 2
+    assert 0 < review.confirmed_rate <= 1
+
+
+def test_a_source_that_is_switched_on_but_found_nothing_is_named(make_config):
+    from datetime import date
+
+    from jobpilot.report import weekly_review
+
+    config = make_config(
+        search={"sources": {"ashby": {"enabled": True, "boards": ["northwind-analytics"]}}}
+    )
+    review = weekly_review(
+        [{"job_id": "1", "status": "applied", "source": "greenhouse"}], config, today=date(2026, 11, 9)
+    )
+    assert "ashby" in review.dead_sources
+
+
+def test_the_weekly_words_are_plain(config):
+    from datetime import date
+
+    from jobpilot.report import weekly_review
+    from jobpilot.ui import lint_plain
+
+    review = weekly_review(
+        [{"job_id": "1", "status": "blocked", "source": "greenhouse", "ats": "workday"}],
+        config,
+        today=date(2026, 11, 9),
+    )
+    for line in review.words().splitlines():
+        assert lint_plain(line) == [], line
+
+
+def test_an_empty_week_still_produces_a_review(config):
+    from datetime import date
+
+    from jobpilot.report import weekly_review
+
+    review = weekly_review([], config, today=date(2026, 11, 9))
+    assert "0 applications went out" in review.words()
+    assert review.notes().startswith("## week to 2026-11-09")

@@ -96,3 +96,76 @@ def test_a_routine_is_comparable_and_immutable():
     one = Routine("a", {"at": "08:00"}, "x", "")
     with pytest.raises(AttributeError):
         one.name = "b"  # type: ignore[misc]
+
+
+# -- every live routine is covered and wired -----------------------------
+
+
+def test_the_timetable_covers_everything_that_should_happen_by_itself():
+    """A capability with no routine is a capability nobody ever benefits from."""
+    from jobpilot.routines import load_routines
+
+    whats = {routine.what for routine in load_routines()}
+    for expected in (
+        "search.daily_pass",
+        "screen.pass",
+        "apply.pass",
+        "apply.handoff_watchdog",
+        "report.digest",
+        "report.reflection",
+        "report.weekly_review",
+        "verify.receipt_sweep",
+        "mail.triage",
+        "mail.reminders",
+        "watch.tick",
+        "outreach.manifest",
+        "records.tidy",
+    ):
+        assert expected in whats, expected
+
+
+def test_the_reminders_run_morning_and_evening():
+    from jobpilot.routines import load_routines
+
+    times = {r.schedule.get("at") for r in load_routines() if r.what == "mail.reminders"}
+    assert times == {"09:30", "20:00"}
+
+
+def test_applying_happens_during_the_day_and_overnight():
+    from jobpilot.routines import load_routines
+
+    windows = {r.schedule.get("window") for r in load_routines() if r.what == "apply.pass"}
+    assert len(windows) == 2
+    assert any(w.startswith("22:") for w in windows), "one window must cover the night"
+
+
+def test_a_helper_routine_resolves_to_something_real(make_config):
+    """Installing a helper must never leave a timetable entry with nothing behind it."""
+    from jobpilot.routines import all_routines
+    from jobpilot.scheduler import resolve
+
+    config = make_config(plugins={"linkedin": {"enabled": True}})
+    helper = [r for r in all_routines(config) if r.what.startswith("plugins.")]
+    assert helper, "the helper contributes a routine"
+    for routine in helper:
+        assert resolve(routine.what) is not None
+
+
+def test_every_routine_a_user_could_have_is_wired_up(make_config):
+    from jobpilot.routines import all_routines
+    from jobpilot.scheduler import resolve
+
+    config = make_config(
+        plugins={name: {"enabled": True} for name in ("linkedin", "handshake", "yc")}
+    )
+    missing = [r.name for r in all_routines(config) if resolve(r.what) is None]
+    assert missing == []
+
+
+def test_every_description_reads_like_a_person_wrote_it():
+    from jobpilot.routines import load_routines
+    from jobpilot.ui import lint_plain
+
+    for routine in load_routines():
+        assert routine.description, routine.name
+        assert lint_plain(routine.description) == [], routine.name

@@ -2,10 +2,23 @@
 # routines.yaml — what runs by itself, and when.
 #
 # Each entry is declarative: a name, a schedule, what it does, and a
-# plain-language description. `jobpilot status` reads the descriptions back to
-# you ("Every weekday at 8am you get one email"), so keep them in your words.
+# plain-language description. `jobpilot status` and `jobpilot routines list`
+# read the descriptions back to you ("Every weekday at 8am you get one email"),
+# so keep them in your own words — they are the only description of the
+# timetable there is.
 #
-# Times are local to timing.timezone in preferences.yaml.
+# Three schedule shapes:
+#   at:     "08:00" with days:  — once on each matching day, at or after that time
+#   window: "09:30-18:00"       — repeatedly while open, at most once per every_minutes
+#   every:  "2 hours"           — at most once per interval, all day
+#
+# Times are local to timing.timezone in your settings. `jobpilot routines
+# run-due` works out what is due and remembers that it ran, so calling it every
+# few minutes from a scheduler is safe: nothing happens twice.
+#
+# Nothing here sends, submits or posts anything. Each one runs the same code the
+# command line runs, with the same permissions and the same checks, and every
+# sending permission starts switched off.
 # ---------------------------------------------------------------------------
 
 routines:
@@ -19,15 +32,50 @@ routines:
     what: screen.pass
     description: "Right after that I read each new job description and decide whether it is worth applying to."
 
-  - name: apply
-    schedule: { window: "09:30-18:00", days: mon-fri }
-    what: apply.waves
-    description: "On weekdays between half past nine and six I work through the list and fill in applications."
-
   - name: daily_email
     schedule: { at: "08:00", days: mon-fri }
     what: report.digest
     description: "Every weekday at 8am you get one email with what I did and anything that needs you."
+
+  - name: draft_messages
+    schedule: { at: "08:40", days: mon-fri }
+    what: outreach.manifest
+    description: "On weekday mornings I write up any messages worth sending, for you to look over. I send none of them."
+
+  - name: apply
+    schedule: { window: "09:30-18:00", days: mon-fri, every_minutes: 30 }
+    what: apply.pass
+    description: "On weekdays between half past nine and six I work through the list and fill in applications."
+
+  - name: apply_overnight
+    schedule: { window: "22:00-07:00", days: daily, every_minutes: 60 }
+    what: apply.pass
+    description: "Overnight I keep working through the list, so the morning starts with it already shorter."
+
+  - name: morning_reminders
+    schedule: { at: "09:30", days: daily }
+    what: mail.reminders
+    description: "Each morning I remind you about any test or interview coming up."
+
+  - name: evening_reminders
+    schedule: { at: "20:00", days: daily }
+    what: mail.reminders
+    description: "And again in the evening, so a deadline is never a surprise."
+
+  - name: check_mail
+    schedule: { every: "2 hours" }
+    what: mail.triage
+    description: "Through the day I read your mail for replies, tests and interview invitations. I only ever read it."
+
+  - name: handoff_check
+    schedule: { at: "11:39", days: daily }
+    what: apply.handoff_watchdog
+    description: "Late each morning I check that everything I found in the morning really reached my list."
+
+  - name: health_check
+    schedule: { every: "1 hour" }
+    what: watch.tick
+    description: "Every hour I check that nothing is quietly stuck, and tell you if something needs you."
 
   - name: check_receipts
     schedule: { at: "18:00", days: daily }
@@ -37,9 +85,14 @@ routines:
   - name: look_back
     schedule: { at: "18:30", days: daily }
     what: report.reflection
-    description: "At the end of the day I write down how it went and what I could do better."
+    description: "At the end of the day I look at how it went, and bring you any suggestion worth making."
 
-  - name: suggestions
+  - name: tidy_up
+    schedule: { every: "6 hours" }
+    what: records.tidy
+    description: "Now and then I tidy away old copies of your records, so they do not fill up your disk."
+
+  - name: weekly_review
     schedule: { at: "10:00", days: mon }
-    what: lead.proposals
-    description: "Once a week, on Monday morning, I bring you suggestions. I never change your settings without asking."
+    what: report.weekly_review
+    description: "Once a week, on Monday morning, I go over the whole week with you and suggest what to change. I never change your settings without asking."

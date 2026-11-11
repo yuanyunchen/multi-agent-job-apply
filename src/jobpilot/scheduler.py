@@ -218,11 +218,19 @@ def action_apply(config: Config, renderer: Renderer) -> str:
 
 
 def action_digest(config: Config, renderer: Renderer) -> str:
+    """One summary a day, and never two.
+
+    The timetable asks for this once each weekday, but a restart, a clock
+    change or somebody running it by hand must not produce a second one: two
+    emails saying different things about the same day is worse than neither.
+    """
     from .report import digest
     from .tracker import Tracker
 
-    text = digest(Tracker.from_config(config).read(), config, renderer)
     path = config.paths.ensure().logs / f"digest-{datetime.now().date().isoformat()}.txt"
+    if path.exists():
+        return ""  # already done today
+    text = digest(Tracker.from_config(config).read(), config, renderer)
     path.write_text(text + "\n", encoding="utf-8")
     if config.permitted("send_digest_email"):
         return "I put your daily summary together and sent it."
@@ -251,11 +259,19 @@ def action_receipts(config: Config, renderer: Renderer) -> str:
 
 
 def action_reflection(config: Config, renderer: Renderer) -> str:
+    """Look back at the day — and *this* is where suggestions come from.
+
+    Writing a reflection nobody acts on is a diary, not an improvement. So the
+    reflection is what triggers the proposals: the numbers are read, anything
+    worth asking about becomes a suggestion, and the suggestion waits for the
+    user's yes. Nothing is ever applied here.
+    """
     from .report import append_reflection, reflection
     from .tracker import Tracker
 
-    append_reflection(config, reflection(Tracker.from_config(config).read()))
-    return ""  # the reflection is for me, not for the user
+    rows = Tracker.from_config(config).read()
+    append_reflection(config, reflection(rows))
+    return action_proposals(config, renderer)
 
 
 def action_proposals(config: Config, renderer: Renderer) -> str:
@@ -270,16 +286,187 @@ def action_proposals(config: Config, renderer: Renderer) -> str:
     return render_proposals(items)
 
 
-#: Routine name in ``routines/routines.yaml`` → what it does.
+def action_weekly_review(config: Config, renderer: Renderer) -> str:
+    """The Monday look back over the whole week, plus the week's suggestions."""
+    from .report import append_reflection, weekly_review
+    from .tracker import Tracker
+
+    rows = Tracker.from_config(config).read()
+    review = weekly_review(rows, config)
+    append_reflection(config, review.notes())
+    suggestions = action_proposals(config, renderer)
+    return "\n\n".join(part for part in (review.words(), suggestions) if part)
+
+
+def action_mail_triage(config: Config, renderer: Renderer) -> str:
+    """Read the mailbox for replies, tests and interviews. Read-only, always."""
+    from datetime import timedelta
+
+    from .mail import triage
+    from .tracker import Tracker
+    from .verify import reader_from_config
+
+    reader = reader_from_config(config)
+    if reader is None:
+        return ""  # no mailbox connected: nothing to say, nothing wrong
+    tracker = Tracker.from_config(config)
+    rows = tracker.read()
+    result = triage(
+        rows=rows,
+        reader=reader,
+        recipient=str(config.get("identity.apply_email", "")),
+        since=_local_now(config) - timedelta(hours=24),
+    )
+    if result.updates:
+        tracker.upsert(result.updates, caller="mail")
+    _save_appointments(config, result.appointments)
+    if result.urgent:
+        return "\n".join(result.urgent)
+    return ""
+
+
+def action_reminders(config: Config, renderer: Renderer) -> str:
+    """Remind the user about anything with a date. Empty when there is nothing."""
+    from .mail import reminders
+
+    return reminders(_load_appointments(config), moment=_local_now(config).replace(tzinfo=None))
+
+
+def action_handoff_watchdog(config: Config, renderer: Renderer) -> str:
+    """Did the morning's work reach the list, and is it moving?"""
+    from .pins import PinStore, watch_handoff
+    from .tracker import Tracker
+    from .watch import freshly_found
+
+    rows = Tracker.from_config(config).read()
+    pin = PinStore.from_config(config).latest()
+    problems = watch_handoff(rows, found_recently=freshly_found(rows), pin=pin)
+    return "\n".join(problem.detail for problem in problems)
+
+
+def action_watch_tick(config: Config, renderer: Renderer) -> str:
+    """The hourly health check. Only what needs the user is said out loud."""
+    from .tracker import Tracker
+    from .watch import freshly_found, last_submit_from_rows, login_states_from_disk, record, tick
+
+    rows = Tracker.from_config(config).read()
+    result = tick(
+        config,
+        rows=rows,
+        found_recently=freshly_found(rows),
+        last_submit_at=last_submit_from_rows(rows),
+        login_states=login_states_from_disk(config),
+    )
+    record(config, result)
+    speak = [alert.detail for alert in result.alerts if alert.needs_user]
+    return "\n".join(speak)
+
+
+def action_outreach_manifest(config: Config, renderer: Renderer) -> str:
+    """Write up the messages worth sending. Sends none of them."""
+    from .outreach import build_manifest, write_manifest
+
+    manifest = build_manifest(config)
+    if not manifest.entries:
+        return ""
+    write_manifest(config, manifest)
+    return manifest.words()
+
+
+def action_tidy(config: Config, renderer: Renderer) -> str:
+    """Prune old copies of the record. Unrotated backups are how a disk fills up."""
+    from .tracker import Tracker
+
+    Tracker.from_config(config).tidy_backups()
+    return ""  # housekeeping is not news
+
+
+#: Where the dates read out of the mailbox are kept between routines.
+APPOINTMENTS_FILE = "appointments.json"
+
+
+def _save_appointments(config: Config, appointments: list) -> None:
+    from dataclasses import asdict
+
+    path = config.paths.ensure().state / APPOINTMENTS_FILE
+    existing = {item["job_id"]: item for item in _read_appointments(config)}
+    for appointment in appointments:
+        existing[appointment.job_id] = asdict(appointment)
+    path.write_text(json.dumps(sorted(existing.values(), key=lambda a: a["when"]), indent=2), encoding="utf-8")
+
+
+def _read_appointments(config: Config) -> list[dict]:
+    path = config.paths.ensure().state / APPOINTMENTS_FILE
+    if not path.exists():
+        return []
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except ValueError:
+        return []
+    return [item for item in payload if isinstance(item, dict)]
+
+
+def _load_appointments(config: Config) -> list:
+    from .mail import Appointment
+
+    return [Appointment(**item) for item in _read_appointments(config)]
+
+
+def action_plugin_cycle(config: Config, renderer: Renderer, *, plugin: str = "") -> str:
+    """A helper's own routine: draft, check, and write it down. Never send.
+
+    A plugin contributes routines through its manifest, and this is what those
+    resolve to. Core ships no sender, so a helper cannot send anything on its
+    own however its manifest is written.
+    """
+    from .outreach import build_manifest, write_manifest
+
+    manifest = build_manifest(config)
+    chosen = [entry for entry in manifest.entries if entry.plugin == plugin]
+    if not chosen:
+        return ""
+    manifest.entries = chosen
+    write_manifest(config, manifest)
+    return manifest.words()
+
+
+#: ``what:`` in the timetable → the callable that does it.
 ACTIONS: dict[str, Callable[[Config, Renderer], str]] = {
     "search.daily_pass": action_search,
     "screen.pass": action_screen,
-    "apply.waves": action_apply,
+    "apply.pass": action_apply,
+    "apply.handoff_watchdog": action_handoff_watchdog,
     "report.digest": action_digest,
-    "verify.receipt_sweep": action_receipts,
     "report.reflection": action_reflection,
+    "report.weekly_review": action_weekly_review,
+    "verify.receipt_sweep": action_receipts,
+    "mail.triage": action_mail_triage,
+    "mail.reminders": action_reminders,
+    "watch.tick": action_watch_tick,
+    "outreach.manifest": action_outreach_manifest,
+    "records.tidy": action_tidy,
     "lead.proposals": action_proposals,
 }
+
+#: What a plugin's routine looks like in the timetable.
+PLUGIN_PREFIX = "plugins."
+
+
+def resolve(what: str, table: dict[str, Callable[[Config, Renderer], str]] | None = None):
+    """The callable for a ``what:``, including a plugin's own routines.
+
+    A helper declares routines in its manifest; those arrive here as
+    ``plugins.<name>.<action>`` and all resolve to the same drafting cycle, so
+    installing a helper can never leave a timetable entry with nothing behind
+    it.
+    """
+    table = ACTIONS if table is None else table
+    if what in table:
+        return table[what]
+    if what.startswith(PLUGIN_PREFIX):
+        name = what[len(PLUGIN_PREFIX) :].split(".")[0]
+        return lambda config, renderer: action_plugin_cycle(config, renderer, plugin=name)
+    return None
 
 
 @dataclass
@@ -319,7 +506,7 @@ def run_due(
         if not is_due(routine, state.when(routine.name), moment):
             report.skipped.append(routine.name)
             continue
-        handler = table.get(routine.what)
+        handler = resolve(routine.what, table)
         if handler is None:
             report.failed.append((routine.name, "nothing is wired up to do this yet"))
             continue

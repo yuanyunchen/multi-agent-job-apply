@@ -594,6 +594,21 @@ class Tracker:
             caller="lead",
         )
 
+    def tidy_backups(self) -> int:
+        """Prune old copies of the record. Returns how many were cleared away.
+
+        Rotation happens on every write, but a long-idle installation never
+        writes — and a tool that copies the record without calling the shared
+        rotation is how 1,600 unpruned copies once filled a disk. This is the
+        periodic sweep that makes the policy true regardless.
+        """
+        if not self.backups_dir.exists():
+            return 0
+        before = len(list(self.backups_dir.glob("applications.json.bak-*")))
+        self._rotate()
+        after = len(list(self.backups_dir.glob("applications.json.bak-*")))
+        return max(0, before - after)
+
     def already_submitted(self, job_id: str) -> bool:
         row = self.by_id().get(job_id)
         return bool(row) and normalize_status(row.get("status")) in SUBMITTED_STATUSES

@@ -122,11 +122,14 @@ def plugin_routines(config: Config) -> list[Routine]:
     out: list[Routine] = []
     for plugin in load_plugins(config):
         for entry in plugin.manifest.routines:
+            action = str(entry.get("action", "cycle"))
             out.append(
                 Routine(
                     name=f"{plugin.manifest.name}_{entry.get('id', 'cycle')}",
                     schedule=entry.get("schedule") or {"window": entry.get("window", "18:00-22:00")},
-                    what=str(entry.get("action", "")),
+                    # Namespaced, so the scheduler can resolve a helper's own
+                    # routine without the helper having to register anything.
+                    what=f"plugins.{plugin.manifest.name}.{action}",
                     description=str(entry.get("description", "")),
                 )
             )
