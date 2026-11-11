@@ -520,3 +520,35 @@ def test_doctor_says_when_an_employer_sign_up_needs_the_user(settings_file, caps
     out = capsys.readouterr().out
     assert "is waiting for you" in out
     assert "text a code to your phone" in out
+
+
+def test_doctor_reports_an_unusable_data_folder_as_a_sentence(settings_file, capsys, tmp_path, monkeypatch):
+    """A self-check that ends in a stack trace has failed at its one job."""
+    import yaml
+
+    blocked = tmp_path / "blocked"
+    blocked.write_text("not a directory", encoding="utf-8")
+    data = yaml.safe_load(settings_file.read_text(encoding="utf-8"))
+    data["paths"] = {"data_dir": str(blocked / "inside")}
+    settings_file.write_text(yaml.safe_dump(data), encoding="utf-8")
+    monkeypatch.delenv("JOBPILOT_DATA_DIR", raising=False)
+
+    assert run(["doctor"], settings_file) == 1
+    out = capsys.readouterr().out
+    assert "I cannot write to" in out
+    assert "is skipped until that is fixed" in out
+    # and it still finishes the checks that do not need that folder
+    assert "Timetable:" in out
+    assert "needs fixing before I can run on my own" in out
+
+
+def test_doctor_is_happy_with_the_shipped_example_settings(tmp_path, capsys, monkeypatch):
+    """Somebody's very first run uses the example. It has to work."""
+    from jobpilot.config import EXAMPLE_CONFIG_PATH, repo_root
+
+    monkeypatch.setenv("JOBPILOT_DATA_DIR", str(tmp_path / "data"))
+    assert run(["doctor"], repo_root() / EXAMPLE_CONFIG_PATH) == 0
+    out = capsys.readouterr().out
+    assert "Everything checks out." in out
+    # the placeholders in it are treated as unanswered, not as broken answers
+    assert "{{" not in out

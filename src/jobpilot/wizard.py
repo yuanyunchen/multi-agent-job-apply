@@ -27,7 +27,7 @@ from typing import Any, Protocol
 import yaml
 
 from . import catalog
-from .config import DEFAULTS, Config, backup_settings, validate
+from .config import DEFAULTS, Config, backup_settings, blank_placeholders, has_placeholder, validate
 from .config import write as write_config
 from .errors import ConfigError
 from .explain import explain_team
@@ -657,29 +657,10 @@ def _plain_list(value: Any) -> list[str]:
     return [str(item) for item in value if item and not _is_placeholder(str(item))]
 
 
-def strip_placeholders(value: Any) -> Any:
-    """Remove every ``{{PLACEHOLDER}}`` the example file left behind.
-
-    A placeholder that survives into real settings is worse than an empty
-    value: it looks like an answer, and it would be typed into a form.
-    """
-    if isinstance(value, dict):
-        return {key: strip_placeholders(item) for key, item in value.items()}
-    if isinstance(value, list):
-        return [strip_placeholders(item) for item in value if not _is_placeholder(item)]
-    return "" if _is_placeholder(value) else value
-
-
-def _is_placeholder(value: Any) -> bool:
-    """A value is unusable if it still has a ``{{...}}`` anywhere in it.
-
-    ``config/resumes/{{RESUME_FILE}}`` is not a file; pretending it is one
-    would mean trying to attach it to an application.
-    """
-    return isinstance(value, str) and bool(_PLACEHOLDER_ANYWHERE.search(value))
-
-
-_PLACEHOLDER_ANYWHERE = re.compile(r"\{\{[^}]*\}\}")
+#: Removing every leftover ``{{PLACEHOLDER}}`` is a settings concern, and
+#: :func:`jobpilot.config.blank_placeholders` is the one implementation of it.
+strip_placeholders = blank_placeholders
+_is_placeholder = has_placeholder
 
 
 def _boards_default(data: dict[str, Any]) -> list[str]:

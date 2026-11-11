@@ -517,19 +517,27 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     print(f"Settings: fine ({config.source}).")
 
     paths = config.paths
+    # Whether the data folder is usable decides how much else can be checked:
+    # everything below that reads the record needs it. A check that cannot run
+    # is reported as a sentence like all the others — the whole purpose of this
+    # command is that it never ends in a stack trace.
+    usable = True
     try:
         paths.ensure()
         print(f"My own files: fine ({paths.data_dir}).")
     except OSError as exc:
+        usable = False
         problems += 1
         print(f"My own files: I cannot write to {paths.data_dir} ({exc}).")
+        print("  Everything below that needs my own files is skipped until that is fixed.")
 
-    try:
-        rows = Tracker.from_config(config).read()
-        print(f"Your application record: fine ({plural(len(rows), 'job')} on file).")
-    except JobpilotError as exc:
-        problems += 1
-        print(f"Your application record: {exc}")
+    if usable:
+        try:
+            rows = Tracker.from_config(config).read()
+            print(f"Your application record: fine ({plural(len(rows), 'job')} on file).")
+        except (JobpilotError, OSError) as exc:
+            problems += 1
+            print(f"Your application record: {exc}")
 
     answers = AnswerBank.from_config(config)
     if answers.entries:
@@ -571,14 +579,14 @@ def cmd_doctor(args: argparse.Namespace) -> int:
         state = "on" if config.plugin_enabled(manifest.name) else "off"
         print(f"Helper '{manifest.name}': {state}.")
 
-    accounts = AccountRegistry.from_config(config)
-    waiting = accounts.needing_user()
-    if waiting:
-        print(f"Employer sign-ups: {plural(len(waiting), 'one')} is waiting for you.")
-        for account in waiting:
-            print(f"  - {account.words}")
-    else:
-        print("Employer sign-ups: nothing waiting for you.")
+    if usable:
+        waiting = AccountRegistry.from_config(config).needing_user()
+        if waiting:
+            print(f"Employer sign-ups: {plural(len(waiting), 'one')} is waiting for you.")
+            for account in waiting:
+                print(f"  - {account.words}")
+        else:
+            print("Employer sign-ups: nothing waiting for you.")
 
     # Every timetable entry must have something behind it; an entry that cannot
     # run is a promise that fails silently every time it comes due.
@@ -590,19 +598,20 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     else:
         print(f"Timetable: {plural(len(routines), 'routine')}, all of them ready to run.")
 
-    health = tick(
-        config,
-        rows=rows,
-        found_recently=freshly_found(rows),
-        last_submit_at=last_submit_from_rows(rows),
-        login_states=login_states_from_disk(config),
-    )
-    if health.healthy:
-        print("Health: nothing looks stuck.")
-    else:
-        print("Health:")
-        for alert in health.alerts:
-            print(f"  - {alert.detail}")
+    if usable:
+        health = tick(
+            config,
+            rows=rows,
+            found_recently=freshly_found(rows),
+            last_submit_at=last_submit_from_rows(rows),
+            login_states=login_states_from_disk(config),
+        )
+        if health.healthy:
+            print("Health: nothing looks stuck.")
+        else:
+            print("Health:")
+            for alert in health.alerts:
+                print(f"  - {alert.detail}")
     allowed = [a for a in ("submit_applications", "send_outreach_messages", "post_public_comments")
                if config.permitted(a)]
     print(

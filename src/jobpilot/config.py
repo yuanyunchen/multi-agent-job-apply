@@ -228,6 +228,21 @@ def has_placeholder(value: Any) -> bool:
     return isinstance(value, str) and bool(_PLACEHOLDER.search(value))
 
 
+def blank_placeholders(value: Any) -> Any:
+    """Replace every ``{{PLACEHOLDER}}`` with nothing, all the way down.
+
+    Done on **load**, so a placeholder can never become a runtime value. A
+    placeholder that survives is worse than an empty field: an empty field is
+    reported and asked about, while ``{{FULL_NAME}}`` looks like an answer and
+    would be typed into a form.
+    """
+    if isinstance(value, dict):
+        return {key: blank_placeholders(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [blank_placeholders(item) for item in value if not has_placeholder(item)]
+    return "" if has_placeholder(value) else value
+
+
 def _merge(base: Any, override: Any) -> Any:
     """Override on top of base, copying all the way down.
 
@@ -574,7 +589,7 @@ def load(path: str | Path | None = None, *, overrides: dict[str, Any] | None = N
             f"Your settings file at {config_path} should be a list of settings, not {type(raw).__name__}.",
             hint="Start again from config/preferences.example.yaml.",
         )
-    merged = _merge(DEFAULTS, raw)
+    merged = _merge(DEFAULTS, blank_placeholders(raw))
     if overrides:
         merged = _merge(merged, overrides)
     return validate(merged, config_path)
