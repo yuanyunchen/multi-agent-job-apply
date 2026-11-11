@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from jobpilot.domain import Message
-from jobpilot.ui import Renderer, lint_plain, plural, renderer_for
+from jobpilot.ui import Renderer, lint_plain, plural, renderer_for, verb
 
 
 def test_simple_mode_is_the_default(config):
@@ -79,3 +79,12 @@ def test_counting_reads_naturally():
     assert plural(2, "application") == "2 applications"
     assert plural(1, "needs", "need") == "1 needs"
     assert plural(3, "needs", "need") == "3 need"
+
+
+def test_the_verb_agrees_with_the_number_it_follows():
+    """A generated count needs a generated verb, or the sentence reads wrong."""
+    assert verb(1, "needs", "need") == "needs"
+    assert verb(0, "needs", "need") == "need"
+    assert verb(3, "needs", "need") == "need"
+    assert f"{plural(1, 'thing')} {verb(1, 'needs', 'need')} fixing" == "1 thing needs fixing"
+    assert f"{plural(3, 'thing')} {verb(3, 'needs', 'need')} fixing" == "3 things need fixing"

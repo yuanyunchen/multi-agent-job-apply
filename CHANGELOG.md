@@ -121,6 +121,14 @@ details.
   missing file, so the shipped example no longer looks like a broken install.
 - `doctor` also reports the CV, the answer bank, employer sign-ups waiting on
   the user, whether every timetable entry can run, and the health check.
+- **A model command-line tool is never reachable in test mode**, so that is now
+  what its health says, whatever is installed on the machine. In test mode -
+  which is what the examples, the dry runs and the suite use - `doctor` reports
+  such a model as **not checked** instead of counting it as a fault, so a fresh
+  machine with no `claude` or `codex` on `PATH` passes the self-check. On a real
+  installation a configured tool that cannot be found is still a problem, and
+  still names itself.
+- **Counts and verbs agree**: "3 things need fixing", "1 thing needs fixing".
 - `agents/search.md` documents the wide and deep lanes as **one role with one
   set of rules**: two roles means two copies of the rules, and those drift.
 - `agents/README.md` lists every role, including the three helpers.
@@ -145,4 +153,4 @@ details.
 
 ### Tests
 
-456 → 904.
+456 → 920.

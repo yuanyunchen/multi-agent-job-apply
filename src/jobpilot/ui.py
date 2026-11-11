@@ -103,3 +103,13 @@ def renderer_for(config) -> Renderer:
 
 def plural(count: int, singular: str, plural_form: str | None = None) -> str:
     return f"{count} {singular if count == 1 else (plural_form or singular + 's')}"
+
+
+def verb(count: int, singular_form: str, plural_form: str) -> str:
+    """The verb that agrees with ``count``: ``verb(1, "is", "are") == "is"``.
+
+    The counts in a message are generated, so the verb has to be too -
+    "3 things needs fixing" is the sort of sentence that makes a user doubt
+    everything else the program says.
+    """
+    return singular_form if count == 1 else plural_form

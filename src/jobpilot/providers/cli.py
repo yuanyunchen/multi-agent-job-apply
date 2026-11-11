@@ -11,8 +11,12 @@ import shutil
 import subprocess
 from dataclasses import dataclass, field
 
-from ..testmode import ensure_live
+from ..testmode import ensure_live, is_test_mode
 from .base import Health, ModelResult, redact, schema_hint
+
+#: What :meth:`CliProvider.health` says while the tests run. It is the same
+#: sentence on every machine on purpose: see the method's own docstring.
+BLOCKED_IN_TEST_MODE = "I am not allowed to use a model tool while the tests run"
 
 
 @dataclass
@@ -28,6 +32,16 @@ class CliProvider:
         return shutil.which(self.command)
 
     def health(self) -> Health:
+        """Can this tool be used *right now*?
+
+        In test mode the answer is no, whatever is installed: :meth:`complete`
+        refuses to start a real process there. Answering from the machine's
+        ``PATH`` instead would make the suite, the examples and ``doctor``
+        report different things on different computers - which is how a check
+        that passes on its author's laptop fails on a fresh one.
+        """
+        if is_test_mode():
+            return Health(False, BLOCKED_IN_TEST_MODE)
         if self._resolve() is None:
             return Health(False, f"I could not find the {self.name} tool on this computer.")
         return Health(True, f"{self.name} is installed")

@@ -5,7 +5,7 @@ import pytest
 from jobpilot.errors import ProviderUnavailable
 from jobpilot.providers import FakeProvider, build_registry
 from jobpilot.providers.base import Health, ModelProvider, ModelResult, redact, schema_hint
-from jobpilot.providers.cli import claude_provider, codex_provider
+from jobpilot.providers.cli import BLOCKED_IN_TEST_MODE, claude_provider, codex_provider
 
 
 def test_the_fake_provider_is_deterministic():
@@ -145,8 +145,23 @@ def test_the_codex_provider_is_a_second_engine():
     assert codex_provider().command == "codex"
 
 
-def test_a_missing_tool_is_reported_in_words():
+def test_a_missing_tool_is_reported_in_words(monkeypatch):
+    """In real use a tool that is not installed is named as the reason."""
+    monkeypatch.delenv("JOBPILOT_TEST", raising=False)
     provider = claude_provider("x", command="definitely-not-installed-anywhere")
     health = provider.health()
     assert health.ok is False
     assert "could not find" in health.detail
+
+
+def test_a_tool_that_is_installed_is_still_unusable_while_the_tests_run(monkeypatch):
+    """Health answers "can I use this now?", and in test mode the answer is no.
+
+    Were it answered from PATH, every check built on it would say something
+    different depending on which machine ran it.
+    """
+    provider = claude_provider("x", command="definitely-not-installed-anywhere")
+    monkeypatch.setattr(provider, "_resolve", lambda: "/somewhere/claude")
+    health = provider.health()
+    assert health.ok is False
+    assert health.detail == BLOCKED_IN_TEST_MODE

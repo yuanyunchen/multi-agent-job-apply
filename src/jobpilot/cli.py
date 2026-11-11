@@ -30,7 +30,7 @@ from . import __version__
 from .config import EXAMPLE_CONFIG_PATH, Config, load, repo_root, settings_path
 from .domain import Message
 from .errors import JobpilotError
-from .ui import Renderer, plural
+from .ui import Renderer, plural, verb
 
 
 def _renderer(config: Config | None, technical: bool) -> Renderer:
@@ -168,7 +168,8 @@ def cmd_status(args: argparse.Namespace) -> int:
         )
     )
     if numbers.needs_you:
-        print(f"\n{plural(len(numbers.needs_you), 'thing')} needs you:")
+        count = len(numbers.needs_you)
+        print(f"\n{plural(count, 'thing')} {verb(count, 'needs', 'need')} you:")
         for item in numbers.needs_you[:3]:
             print(f"  - {item}")
 
@@ -529,6 +530,7 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     from .providers import ROLES, build_registry, role_words
     from .routines import all_routines
     from .scheduler import resolve
+    from .testmode import is_test_mode
     from .tracker import Tracker
     from .watch import freshly_found, last_submit_from_rows, login_states_from_disk, tick
 
@@ -580,6 +582,13 @@ def cmd_doctor(args: argparse.Namespace) -> int:
         print(f"Your CV: I cannot find it where you said it was ({resume}).")
 
     registry = build_registry(config)
+    # Reaching a model tool is deliberately impossible in test mode (see
+    # testmode.ensure_live), which is also the mode the examples and the
+    # dry runs use. "I cannot use one" is the expected answer there, so it is
+    # reported and not counted: otherwise this command would fail on every
+    # machine that simply has no model tools installed, which is most of them.
+    # In real use a model nobody can reach is still something to fix.
+    for_real = not is_test_mode()
     for role in ROLES:
         candidates = registry.candidates(role)
         healthy = [name for name in candidates if registry.health_of(name).ok]
@@ -588,9 +597,12 @@ def cmd_doctor(args: argparse.Namespace) -> int:
             extra = f" (with {plural(spare, 'spare')} if it is busy)" if spare else ""
             print(f"Model for {role_words(role)}: fine{extra}.")
         else:
-            problems += 1
             why = "; ".join(registry.health_of(name).detail for name in candidates) or "nothing is set up"
-            print(f"Model for {role_words(role)}: not usable — {why}.")
+            if for_real:
+                problems += 1
+                print(f"Model for {role_words(role)}: not usable — {why}.")
+            else:
+                print(f"Model for {role_words(role)}: not checked — {why}.")
 
     guard = LaneGuard.from_config(config)
     admission = guard.admit(running=0)
@@ -607,7 +619,10 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     if usable:
         waiting = AccountRegistry.from_config(config).needing_user()
         if waiting:
-            print(f"Employer sign-ups: {plural(len(waiting), 'one')} is waiting for you.")
+            print(
+                f"Employer sign-ups: {plural(len(waiting), 'one')} "
+                f"{verb(len(waiting), 'is', 'are')} waiting for you."
+            )
             for account in waiting:
                 print(f"  - {account.words}")
         else:
@@ -619,7 +634,10 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     unwired = [routine.name for routine in routines if resolve(routine.what) is None]
     if unwired:
         problems += 1
-        print(f"Timetable: {plural(len(unwired), 'thing')} is scheduled but cannot run.")
+        print(
+            f"Timetable: {plural(len(unwired), 'thing')} "
+            f"{verb(len(unwired), 'is', 'are')} scheduled but cannot run."
+        )
     else:
         print(f"Timetable: {plural(len(routines), 'routine')}, all of them ready to run.")
 
@@ -645,7 +663,10 @@ def cmd_doctor(args: argparse.Namespace) -> int:
         else "Permissions: allowed to " + ", ".join(a.replace("_", " ") for a in allowed) + "."
     )
     if problems:
-        print(f"\n{plural(problems, 'thing')} needs fixing before I can run on my own.")
+        print(
+            f"\n{plural(problems, 'thing')} {verb(problems, 'needs', 'need')} fixing "
+            "before I can run on my own."
+        )
         return 1
     print("\nEverything checks out.")
     return 0

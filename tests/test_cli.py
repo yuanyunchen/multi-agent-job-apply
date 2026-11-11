@@ -539,7 +539,7 @@ def test_doctor_reports_an_unusable_data_folder_as_a_sentence(settings_file, cap
     assert "is skipped until that is fixed" in out
     # and it still finishes the checks that do not need that folder
     assert "Timetable:" in out
-    assert "needs fixing before I can run on my own" in out
+    assert "1 thing needs fixing before I can run on my own" in out
 
 
 def test_doctor_is_happy_with_the_shipped_example_settings(tmp_path, capsys, monkeypatch):
@@ -552,3 +552,8 @@ def test_doctor_is_happy_with_the_shipped_example_settings(tmp_path, capsys, mon
     assert "Everything checks out." in out
     # the placeholders in it are treated as unanswered, not as broken answers
     assert "{{" not in out
+    # the example names the model tools a real user installs, and they are out
+    # of reach here whether or not this machine has them: that is reported,
+    # not counted against the installation. tests/test_no_model_tools.py runs
+    # the same thing with those tools stripped out of PATH.
+    assert "Model for reading job descriptions: not checked" in out

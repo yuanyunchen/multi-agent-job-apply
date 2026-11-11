@@ -58,7 +58,7 @@ python -m pytest -q                    # everything, in a few seconds
 python -m pytest -q tests/test_rules.py
 ```
 
-Two rules about tests, both enforced by the suite itself:
+Three rules about tests, all enforced by the suite itself:
 
 1. **Tests can never reach the real world.** `tests/conftest.py` sets
    `JOBPILOT_TEST=1`, and with that set the real HTTP fetcher, the real mailbox
@@ -70,18 +70,17 @@ Two rules about tests, both enforced by the suite itself:
 2. **Fixtures are synthetic.** Invented companies (Acme Robotics, Globex
    Systems, Northwind Analytics, Umbrella Logistics, Stark Grid), invented
    postings, invented mail, `example.test` addresses. See `tests/synthetic.py`.
+3. **No test may depend on what is installed on your machine.** In test mode a
+   model command line is never reached, so its health is "cannot be used here"
+   whatever is on your `PATH` — `doctor` reports it and does not count it, and
+   on a real installation it is still a problem to fix.
+   `tests/test_no_model_tools.py` runs `doctor` and every example again with
+   every folder holding a `claude`/`codex`-style tool taken out of `PATH`.
+   `shutil.which` is allowed in exactly one module
+   (`src/jobpilot/providers/cli.py`), which that file's own test asserts.
 
 The suite also asserts that no test writes into the checkout's `config/`
 folder, and that no module contains a path from somebody's computer.
-
-## Continuous integration
-
-[`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs on **every push and
-every pull request**: the suite on Python 3.10-3.12, the self-check against the
-example settings, the sanitize scan, the bot-template check, and the
-fresh-clone migration run. It is the same set of checks as
-`make test sanitize doctor migration-check`, so a green local run means a green
-CI run.
 
 Two more things the suite keeps honest, both of which have rotted in other
 projects:
@@ -95,6 +94,15 @@ projects:
   invalid, its generated `share.json` is stale, or it names a vendor's model
   where a configurable slot belongs. Run
   `scripts/build_bot_templates.py` after editing a template.
+
+## Continuous integration
+
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs on **every push and
+every pull request**: the suite on Python 3.10-3.12, the self-check against the
+example settings, the sanitize scan, the bot-template check, and the
+fresh-clone migration run. That is the same set of checks as
+`make test sanitize doctor migration-check`, and the runner has no model
+command-line tools on it, so a green local run should mean a green CI run.
 
 ## The sanitization rule
 
