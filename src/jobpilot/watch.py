@@ -144,7 +144,7 @@ def tick(
         )
 
     # 2. a batch that stopped moving
-    result.checked.append("the batch being worked on is moving")
+    result.checked.append("the applications being worked on are moving")
     if pin_outstanding > 0 and pin_progress_at is not None:
         idle = (at - _aware(pin_progress_at, at)).total_seconds() / 60
         if idle >= stuck_limit:
@@ -152,8 +152,8 @@ def tick(
                 Alert(
                     "batch_stuck",
                     "watch",
-                    "A batch of applications has not moved for a while. I will start it again after "
-                    "checking nothing was already sent.",
+                    "A group of applications has not moved for a while. I will start them again "
+                    "after checking nothing was already sent.",
                     technical=f"idle_minutes={int(idle)} outstanding={pin_outstanding}",
                 )
             )

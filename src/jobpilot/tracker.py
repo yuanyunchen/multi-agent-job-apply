@@ -92,7 +92,7 @@ class UpsertResult:
 REFUSAL_WORDS = {
     "missing_job_id": "I could not tell which job it was about",
     "unknown_status": "it used a state I do not recognise",
-    "batch_verdict": "one decision for a whole batch is not evidence",
+    "batch_verdict": "one decision covering several jobs is not evidence",
     "verdict_missing": "it had no decision recorded for that job",
     "skip_without_reason": "it would skip a job without saying why",
     "skip_without_evidence": "it would skip a job without quoting the posting",
@@ -305,7 +305,7 @@ class Tracker:
             if "verdict" in update and "job_id" not in update:
                 raise TrackerRefused(
                     "batch_verdict",
-                    "A single verdict for a whole batch is not evidence. Give me one verdict per job.",
+                    "One decision covering several jobs is not evidence. Give me one per job.",
                 )
             if "status" in update and normalize_status(update["status"]) not in STATUSES:
                 raise TrackerRefused(

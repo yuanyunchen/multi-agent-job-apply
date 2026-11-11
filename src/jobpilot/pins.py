@@ -386,7 +386,7 @@ def watch_handoff(
             problems.append(
                 HandoffProblem(
                     "pin_stuck",
-                    "A batch of applications has not moved for a while, so I will start it again "
+                    "A group of applications has not moved for a while, so I will start them again "
                     "after checking nothing was already sent.",
                     technical=f"pin={pin.pin_id} idle_minutes={int(idle)} rows={outstanding}",
                 )

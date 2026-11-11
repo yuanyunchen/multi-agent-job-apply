@@ -196,3 +196,147 @@ def test_the_blacklist_would_catch_a_regression():
     assert offenders("I wrote 3 rows to the tracker in wave 2 (exit code 0).")
     assert offenders("See ~/.jobpilot/logs/run.log") == [] or True  # a path is caught by the lint
     assert offenders("I applied to 12 jobs today, and 3 need your answer.") == []
+
+
+# -- the new surfaces, in plain words too --------------------------------
+#
+# Every one of these is something the user reads. The no-jargon rule is a
+# promise, and a promise that only covers the modules that existed when it was
+# written is not much of one.
+
+
+def test_the_health_check_speaks_plainly(config):
+    from datetime import datetime, timedelta, timezone
+
+    from jobpilot.watch import tick
+
+    now = datetime(2026, 11, 10, 14, 0, tzinfo=timezone.utc)
+    rows = [
+        {"job_id": f"j{n}", "status": "submitted", "url": f"https://example.test/{n}",
+         "submit_proof_at": (now - timedelta(hours=3)).isoformat()}
+        for n in range(8)
+    ]
+    rows.append({"job_id": "q", "status": "pipeline", "apply_tier": "core", "url": "https://example.test/q"})
+    result = tick(
+        config,
+        rows=rows,
+        found_recently=9,
+        last_submit_at=now - timedelta(hours=5),
+        pin_outstanding=4,
+        pin_progress_at=now - timedelta(hours=2),
+        login_states={"linkedin": "needs_help"},
+        moment=now,
+    )
+    assert result.alerts, "the point of this test is a tick with plenty to say"
+    for alert in result.alerts:
+        assert lint_plain(alert.detail, allow=PRODUCT_NAMES_OK) == [], alert.code
+    for line in result.words().splitlines():
+        assert lint_plain(line, allow=PRODUCT_NAMES_OK) == [], line
+
+
+def test_the_outreach_manifest_speaks_plainly(make_config):
+    from jobpilot.outreach import build_manifest
+
+    config = make_config(
+        plugins={"linkedin": {"enabled": True}}, permissions={"send_outreach_messages": True}
+    )
+    leads = {
+        "linkedin": [
+            {"kind": "connect_note", "recipient": "a hiring manager",
+             "text": "Hello — I work on forecasting models.", "company": "Acme Robotics"}
+        ]
+    }
+    manifest = build_manifest(config, leads=leads)
+    for line in manifest.words().splitlines():
+        assert lint_plain(line, allow=PRODUCT_NAMES_OK) == [], line
+
+
+def test_the_reminders_speak_plainly():
+    from datetime import datetime
+
+    from jobpilot.mail import Appointment, reminders
+
+    item = Appointment(
+        job_id="j1",
+        company="Acme Robotics",
+        title="Machine Learning Engineer",
+        kind="online_assessment",
+        when="2026-11-12T14:30:00",
+        note="ask about the team",
+    )
+    for line in reminders([item], moment=datetime(2026, 11, 10, 8, 0)).splitlines():
+        assert lint_plain(line) == [], line
+
+
+def test_a_refused_change_is_explained_plainly(tracker):
+    tracker.upsert([{"job_id": "a", "status": "submitted", "url": "https://example.test/a"}], caller="apply")
+    plan = tracker.plan(
+        [
+            {"job_id": "a", "status": "pipeline"},
+            {"job_id": "b", "status": "skipped", "skip_reason": "no quote"},
+        ]
+    )
+    for line in plan.words().splitlines():
+        assert lint_plain(line) == [], line
+
+
+def test_the_weekly_review_speaks_plainly(config):
+    from datetime import date
+
+    from jobpilot.report import weekly_review
+
+    rows = [
+        {"job_id": "1", "status": "blocked", "source": "greenhouse", "ats": "workday",
+         "url": "https://example.test/1"},
+        {"job_id": "2", "status": "submitted", "source": "lever", "ats": "lever",
+         "url": "https://example.test/2"},
+    ]
+    for line in weekly_review(rows, config, today=date(2026, 11, 9)).words().splitlines():
+        assert lint_plain(line) == [], line
+
+
+def test_an_account_waiting_on_the_user_is_explained_plainly(config):
+    from jobpilot.accounts import WALLS, AccountRegistry
+
+    registry = AccountRegistry.from_config(config)
+    for wall in WALLS:
+        account = registry.hand_back("a-site", wall)
+        assert lint_plain(account.reason) == [], wall
+
+
+def test_a_refused_batch_of_applications_is_explained_plainly():
+    from jobpilot.pins import PinRefused, build_pin
+
+    try:
+        build_pin([{"job_id": "a", "status": "pipeline", "rerun_approved": "False"}])
+    except PinRefused as refused:
+        assert lint_plain(refused.message) == []
+    else:  # pragma: no cover - the point is that it refuses
+        raise AssertionError("expected the batch to be refused")
+
+
+def test_a_refused_mailbox_export_is_explained_plainly():
+    from datetime import datetime, timedelta, timezone
+
+    from jobpilot.verify import ExportRefused, FakeMailReader, find_code
+
+    moment = datetime(2026, 11, 10, 12, 0, tzinfo=timezone.utc)
+    readers = [
+        FakeMailReader([]),
+        FakeMailReader([], header={"mailbox": "sam@example.test"}),
+        FakeMailReader.covering(
+            [], mailbox="other@example.test", since=moment, until=moment + timedelta(hours=1)
+        ),
+    ]
+    for reader in readers:
+        try:
+            find_code(
+                reader=reader,
+                sender_domains=["greenhouse.io"],
+                recipient="sam@example.test",
+                submitted_at=moment,
+            )
+        except ExportRefused as refused:
+            assert lint_plain(refused.message) == [], refused.code
+        else:  # pragma: no cover
+            raise AssertionError("expected the export to be refused")

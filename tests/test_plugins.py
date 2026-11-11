@@ -236,3 +236,101 @@ def test_outreach_plugins_declare_what_they_may_write():
 def test_a_browser_source_needs_no_fetcher_at_all():
     source = BrowserAgentSource(plugin="x", prompt="go", provider=FakeProvider(replies=["{}"]))
     assert list(source.fetch(None)) == []
+
+
+# -- the three helpers, each complete ------------------------------------
+
+HELPERS = ("linkedin", "handshake", "yc")
+
+
+@pytest.mark.parametrize("name", HELPERS)
+def test_every_helper_is_installed_and_described(name):
+    from jobpilot.plugins import discover
+
+    manifest = next((m for m in discover() if m.name == name), None)
+    assert manifest is not None, f"{name} is not installed"
+    assert manifest.summary and manifest.explain
+    assert manifest.logins, "a helper that needs no login does not belong in this list"
+    assert manifest.routines, "a helper with no routine would never do anything"
+
+
+@pytest.mark.parametrize("name", HELPERS)
+def test_every_helper_starts_switched_off(name):
+    """Anything that needs an account is off until the person says otherwise."""
+    from jobpilot.plugins import discover
+
+    manifest = next(m for m in discover() if m.name == name)
+    assert manifest.enabled_default is False
+
+
+@pytest.mark.parametrize("name", HELPERS)
+def test_every_helper_can_look_for_jobs(make_config, name):
+    from jobpilot.plugins import load_plugins
+    from jobpilot.providers import FakeProvider
+
+    config = make_config(plugins={name: {"enabled": True, "school_name": "Example University"}})
+    plugin = next(p for p in load_plugins(config) if p.name == name)
+    source = plugin.source(config, FakeProvider(replies=['{"jobs": []}']))
+    assert source is not None, f"{name} contributes no way of finding jobs"
+    assert list(source.fetch(None)) == []  # an empty answer is an empty result, not an error
+
+
+@pytest.mark.parametrize("name", HELPERS)
+def test_every_helper_drafts_through_the_gate_and_cannot_send(make_config, name):
+    from jobpilot.gates import OutboundGate
+    from jobpilot.plugins import load_plugins
+
+    config = make_config(
+        plugins={
+            name: {
+                "enabled": True,
+                "school_name": "Example University",
+                "reply_to_recruiters": True,
+            }
+        },
+        permissions={"send_outreach_messages": True},
+    )
+    plugin = next(p for p in load_plugins(config) if p.name == name)
+    lead = {"kind": "connect_note", "recipient": "someone", "text": "A short, polite note.", "company": "Acme Robotics"}
+    drafts = plugin.drafts(config, [lead])
+    assert drafts, f"{name} drafted nothing"
+
+    outreach = plugin.outreach(config)
+    assert outreach is not None
+    # No sender is passed, because the core has none to pass.
+    results = outreach.submit(drafts, OutboundGate(config))
+    assert [r.sent for r in results] == [False]
+    assert [r.code for r in results] == ["no_sender"]
+
+
+@pytest.mark.parametrize("name", HELPERS)
+def test_every_helper_reports_its_own_readiness(make_config, name):
+    from jobpilot.plugins import load_plugins
+
+    config = make_config(plugins={name: {"enabled": True, "school_name": "Example University"}})
+    plugin = next(p for p in load_plugins(config) if p.name == name)
+    ok, detail = plugin.health(config)
+    assert isinstance(ok, bool)
+    assert detail, "a readiness answer with no sentence is no use to anybody"
+
+
+@pytest.mark.parametrize("name", HELPERS)
+def test_every_helpers_prompt_tells_the_browser_what_it_may_not_do(name):
+    from jobpilot.plugins import discover
+
+    manifest = next(m for m in discover() if m.name == name)
+    prompt = manifest.prompt_path("agent.md")
+    assert prompt is not None, f"{name} ships no browser prompt"
+    text = prompt.read_text(encoding="utf-8").lower()
+    assert "never" in text
+    assert "password" in text  # every prompt states the password rule
+
+
+@pytest.mark.parametrize("name", HELPERS)
+def test_a_helpers_outbound_actions_are_declared_and_known(make_config, name):
+    from jobpilot.config import PERMISSIONS
+    from jobpilot.plugins import discover
+
+    manifest = next(m for m in discover() if m.name == name)
+    for action in manifest.outbound_actions:
+        assert action in PERMISSIONS, f"{name} declares an unknown permission: {action}"
