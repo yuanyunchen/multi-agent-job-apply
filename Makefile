@@ -38,8 +38,8 @@ migration-check:
 	scripts/migration_check.sh
 
 examples:
-	@set -e; for script in examples/*.py; do echo "== $$script"; $(BIN)/python "$$script" >/dev/null; done
-	@set -e; for script in examples/*.sh; do echo "== $$script"; sh "$$script" >/dev/null; done
+	@set -e; for script in examples/[0-9a-z]*.py; do echo "== $$script"; $(BIN)/python "$$script" >/dev/null; done
+	@set -e; for script in examples/*.sh; do echo "== $$script"; PYTHON=$(BIN)/python sh "$$script" >/dev/null; done
 	@echo "All examples ran offline."
 
 clean:
