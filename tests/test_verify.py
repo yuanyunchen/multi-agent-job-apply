@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
+
+import pytest
 
 from jobpilot.verify import (
     Code,
@@ -112,6 +114,17 @@ def test_a_sweep_finds_receipts_for_everything_still_waiting():
 # -- verification codes --------------------------------------------------
 
 
+def _mailbox(inbox, *, minutes: int = 60):
+    """A fake mailbox whose header vouches for the window the reader asks about."""
+    return FakeMailReader.covering(
+        inbox,
+        mailbox=ME,
+        since=SUBMITTED_AT,
+        until=SUBMITTED_AT + timedelta(minutes=minutes),
+        query="security code",
+    )
+
+
 def test_a_code_is_found_inside_the_window():
     inbox = [
         s.mail(
@@ -122,7 +135,7 @@ def test_a_code_is_found_inside_the_window():
         )
     ]
     code = find_code(
-        reader=FakeMailReader(inbox),
+        reader=_mailbox(inbox),
         sender_domains=["greenhouse.io"],
         recipient=ME,
         submitted_at=SUBMITTED_AT,
@@ -149,7 +162,7 @@ def test_a_reset_email_never_yields_a_code():
     ]
     assert (
         find_code(
-            reader=FakeMailReader(inbox),
+            reader=_mailbox(inbox),
             sender_domains=["greenhouse.io"],
             recipient=ME,
             submitted_at=SUBMITTED_AT,
@@ -168,7 +181,7 @@ def test_a_code_from_the_wrong_sender_or_too_late_is_ignored():
     )
     assert (
         find_code(
-            reader=FakeMailReader([late]),
+            reader=_mailbox([late]),
             sender_domains=["greenhouse.io"],
             recipient=ME,
             submitted_at=SUBMITTED_AT,
@@ -183,7 +196,7 @@ def test_a_code_from_the_wrong_sender_or_too_late_is_ignored():
     )
     assert (
         find_code(
-            reader=FakeMailReader([wrong_sender]),
+            reader=_mailbox([wrong_sender]),
             sender_domains=["greenhouse.io"],
             recipient=ME,
             submitted_at=SUBMITTED_AT,
@@ -221,3 +234,127 @@ def test_nothing_sent_means_no_rate_at_all():
 
 def test_no_mailbox_configured_is_a_valid_choice(config):
     assert reader_from_config(config) is None
+
+
+# -- the export header guard ---------------------------------------------
+
+
+def test_a_mailbox_with_no_record_of_what_it_searched_is_refused():
+    """Otherwise "no code found" and "nobody looked" are the same answer."""
+    from jobpilot.verify import ExportRefused
+
+    with pytest.raises(ExportRefused) as caught:
+        find_code(
+            reader=FakeMailReader([]),
+            sender_domains=["greenhouse.io"],
+            recipient=ME,
+            submitted_at=SUBMITTED_AT,
+        )
+    assert caught.value.code == "no_header"
+    assert "nothing arrived" in str(caught.value)
+
+
+def test_an_export_of_a_different_mailbox_is_refused():
+    from jobpilot.verify import ExportRefused
+
+    reader = FakeMailReader.covering(
+        [], mailbox="someone-else@example.test", since=SUBMITTED_AT, until=SUBMITTED_AT + timedelta(hours=1)
+    )
+    with pytest.raises(ExportRefused) as caught:
+        find_code(
+            reader=reader, sender_domains=["greenhouse.io"], recipient=ME, submitted_at=SUBMITTED_AT
+        )
+    assert caught.value.code == "wrong_mailbox"
+
+
+def test_an_unfinished_export_fails_closed():
+    from jobpilot.verify import ExportRefused
+
+    reader = _mailbox([])
+    reader.header["complete"] = False
+    with pytest.raises(ExportRefused) as caught:
+        find_code(
+            reader=reader, sender_domains=["greenhouse.io"], recipient=ME, submitted_at=SUBMITTED_AT
+        )
+    assert caught.value.code == "incomplete_scan"
+    assert "wait" in str(caught.value)
+
+
+def test_an_export_that_stops_before_the_window_does_is_refused():
+    from jobpilot.verify import ExportRefused
+
+    reader = FakeMailReader.covering(
+        [], mailbox=ME, since=SUBMITTED_AT, until=SUBMITTED_AT + timedelta(minutes=2)
+    )
+    with pytest.raises(ExportRefused) as caught:
+        find_code(
+            reader=reader,
+            sender_domains=["greenhouse.io"],
+            recipient=ME,
+            submitted_at=SUBMITTED_AT,
+            window_minutes=10,
+        )
+    assert caught.value.code == "window_too_small"
+
+
+def test_an_export_missing_half_its_header_is_refused():
+    from jobpilot.verify import ExportRefused
+
+    reader = FakeMailReader([], header={"mailbox": ME})
+    with pytest.raises(ExportRefused) as caught:
+        find_code(
+            reader=reader, sender_domains=["greenhouse.io"], recipient=ME, submitted_at=SUBMITTED_AT
+        )
+    assert caught.value.code == "incomplete_header"
+
+
+# -- the code provider ---------------------------------------------------
+
+
+def _code_mailbox(inbox):
+    return FakeMailReader.covering(
+        inbox, mailbox=ME, since=SUBMITTED_AT, until=SUBMITTED_AT + timedelta(hours=1)
+    )
+
+
+def test_code_reading_is_off_for_every_system_until_it_is_switched_on(make_config):
+    from jobpilot.verify import MailboxCodeProvider
+
+    inbox = [
+        s.mail(
+            submitted_at=SUBMITTED_AT,
+            subject="Your security code",
+            body="Your code is AB12CD34.",
+            sender="no-reply@greenhouse.io",
+        )
+    ]
+    config = make_config()
+    provider = MailboxCodeProvider.from_config(config, _code_mailbox(inbox))
+    assert provider.find_code(ats="greenhouse", recipient=ME, submitted_at=SUBMITTED_AT) is None
+
+
+def test_a_system_switched_on_reads_its_own_codes(make_config):
+    from jobpilot.verify import MailboxCodeProvider
+
+    inbox = [
+        s.mail(
+            submitted_at=SUBMITTED_AT,
+            subject="Your security code",
+            body="Your code is AB12CD34.",
+            sender="no-reply@greenhouse.io",
+        )
+    ]
+    config = make_config(verify={"email_codes": {"greenhouse": True}})
+    provider = MailboxCodeProvider.from_config(config, _code_mailbox(inbox))
+    code = provider.find_code(ats="greenhouse", recipient=ME, submitted_at=SUBMITTED_AT)
+    assert code is not None and code.reveal() == "AB12CD34"
+    # Switching one system on does not switch on the rest.
+    assert provider.find_code(ats="workday", recipient=ME, submitted_at=SUBMITTED_AT) is None
+
+
+def test_a_system_nobody_has_mail_domains_for_is_simply_skipped(make_config):
+    from jobpilot.verify import MailboxCodeProvider
+
+    config = make_config(verify={"email_codes": {"greenhouse": True}})
+    provider = MailboxCodeProvider(reader=_code_mailbox([]), enabled_for=frozenset({"mystery-ats"}))
+    assert provider.find_code(ats="mystery-ats", recipient=ME, submitted_at=SUBMITTED_AT) is None

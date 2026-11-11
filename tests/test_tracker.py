@@ -282,3 +282,74 @@ def test_every_claimed_row_can_be_disposed_of(tracker):
     tracker.dispose("j1", "parked", notes="needs your answer")
     row = tracker.by_id()["j1"]
     assert row["status"] == "parked" and row["claimed_by"] == ""
+
+
+# -- looking before writing ----------------------------------------------
+
+
+def test_a_batch_is_planned_without_writing_anything(tracker):
+    plan = tracker.plan([{"job_id": "a", "status": "new", "url": "https://example.test/a"}])
+    assert plan.adds == ["a"]
+    assert plan.clean
+    assert tracker.read() == [], "a plan writes nothing at all"
+
+
+def test_a_plan_shows_which_fields_a_change_would_touch(tracker):
+    tracker.upsert([{"job_id": "a", "status": "new", "company": "Acme Robotics"}], caller="search")
+    plan = tracker.plan([{"job_id": "a", "status": "pipeline", "apply_tier": "core"}])
+    assert plan.adds == []
+    assert plan.changes == [("a", ["apply_tier", "status"])]
+    assert plan.would_write == 1
+
+
+def test_a_plan_reports_a_change_that_would_do_nothing(tracker):
+    tracker.upsert([{"job_id": "a", "status": "new"}], caller="search")
+    plan = tracker.plan([{"job_id": "a", "status": "new"}])
+    assert plan.unchanged == ["a"]
+    assert plan.would_write == 0
+
+
+def test_a_plan_runs_every_guard_so_it_can_be_trusted(tracker):
+    """A plan with no refusals has to mean the write will go through."""
+    tracker.upsert(
+        [{"job_id": "a", "status": "submitted", "url": "https://example.test/a"}], caller="apply"
+    )
+    plan = tracker.plan([{"job_id": "a", "status": "pipeline"}])
+    assert plan.refused == [("a", "already_applied")]
+    assert "already been applied to" in plan.words()
+
+
+def test_a_plan_is_readable_without_knowing_anything_about_the_code(tracker):
+    plan = tracker.plan(
+        [
+            {"job_id": "a", "status": "new"},
+            {"job_id": "b", "status": "skipped", "skip_reason": "no quote given"},
+        ]
+    )
+    words = plan.words()
+    assert "I would add 1 job." in words
+    assert "without quoting the posting" in words
+
+
+def test_commit_does_nothing_unless_it_is_asked_to(tracker):
+    updates = [{"job_id": "a", "status": "new", "url": "https://example.test/a"}]
+    plan, result = tracker.commit(updates, caller="search")  # dry run is the default
+    assert plan.adds == ["a"]
+    assert result is None
+    assert tracker.read() == []
+
+
+def test_commit_writes_when_it_is_asked_to(tracker):
+    updates = [{"job_id": "a", "status": "new", "url": "https://example.test/a"}]
+    plan, result = tracker.commit(updates, caller="search", dry_run=False)
+    assert plan.adds == ["a"]
+    assert result is not None and result.added == 1
+    assert [row["job_id"] for row in tracker.read()] == ["a"]
+
+
+def test_a_commit_still_needs_a_verdict_when_one_is_required(tracker):
+    updates = [{"job_id": "a", "status": "pipeline", "url": "https://example.test/a"}]
+    plan, result = tracker.commit(updates, caller="screen", require_verdict=True, dry_run=False)
+    assert plan.refused == [("a", "verdict_missing")]
+    assert result is not None and result.refused == [("a", "verdict_missing")]
+    assert tracker.read() == []

@@ -27,6 +27,7 @@ from typing import Iterable, Protocol, runtime_checkable
 
 from .config import Config
 from .domain import SUBMITTED_STATUSES, IN_PROGRESS_STATUSES
+from .errors import JobpilotError
 from .gates import is_password_reset
 from .testmode import ensure_live
 from .tracker import normalize_status
@@ -70,9 +71,14 @@ class MailReader(Protocol):
 
 @dataclass
 class FakeMailReader:
-    """An in-memory mailbox for tests and for ``--dry-run``."""
+    """An in-memory mailbox for tests, examples and ``--dry-run``.
+
+    ``header`` is the same declaration a real export carries, so the guard can
+    be exercised offline — including the cases where it should refuse.
+    """
 
     inbox: list[MailMessage] = field(default_factory=list)
+    header: dict | None = None
 
     def messages(self, *, since: datetime, until: datetime, recipient: str = "") -> list[MailMessage]:
         return [
@@ -81,6 +87,103 @@ class FakeMailReader:
             if since <= message.received_at <= until
             and (not recipient or message.recipient.lower() == recipient.lower())
         ]
+
+    def export_header(self) -> dict | None:
+        return self.header
+
+    @classmethod
+    def covering(
+        cls,
+        inbox: list[MailMessage],
+        *,
+        mailbox: str,
+        since: datetime,
+        until: datetime,
+        query: str = "application mail",
+    ) -> "FakeMailReader":
+        """A fake mailbox with a header that vouches for the whole window."""
+        return cls(
+            inbox=list(inbox),
+            header={
+                "mailbox": mailbox,
+                "query": query,
+                "since": since.isoformat(),
+                "until": until.isoformat(),
+                "complete": True,
+            },
+        )
+
+
+class ExportRefused(JobpilotError):
+    """An export was refused. The message never contains anything from the mail."""
+
+    def __init__(self, code: str, message: str) -> None:
+        super().__init__(message)
+        self.code = code
+
+
+#: An export's header declares what it is. Without it there is no way to tell a
+#: scoped, finished export of the right mailbox from a file somebody happened
+#: to leave in the folder.
+REQUIRED_HEADER_FIELDS = ("mailbox", "query", "since", "until", "complete")
+
+
+def check_export_header(
+    header: object,
+    *,
+    recipient: str,
+    since: datetime,
+    until: datetime,
+) -> dict:
+    """Refuse an export whose own header does not vouch for it.
+
+    This guard is what makes "read-only export" mean something. A dropped,
+    half-written or differently scoped file would otherwise be read as though
+    the mail agent had produced it on purpose, and the matching rules would be
+    applied to the wrong mail — or worse, an empty result would be read as "no
+    code arrived" when the truth is "nobody looked".
+
+    All of these must hold:
+
+    1. the header exists and declares every required field;
+    2. its mailbox is the address the application was sent from;
+    3. it is marked finished — a partial scan fails closed;
+    4. its window covers the window being asked about.
+    """
+    if not isinstance(header, dict):
+        raise ExportRefused("no_header", "That mailbox export does not say what it contains.")
+    if [name for name in REQUIRED_HEADER_FIELDS if name not in header]:
+        raise ExportRefused(
+            "incomplete_header",
+            "That mailbox export does not say what it contains, so I did not read it.",
+        )
+    if str(header.get("mailbox", "")).strip().lower() != (recipient or "").strip().lower():
+        raise ExportRefused(
+            "wrong_mailbox",
+            "That mailbox export is for a different address than the one on the application.",
+        )
+    if not header.get("complete"):
+        raise ExportRefused(
+            "incomplete_scan",
+            "That mailbox export was not finished, so I will wait rather than assume nothing arrived.",
+        )
+    try:
+        covered_from = _as_utc(datetime.fromisoformat(str(header["since"])))
+        covered_to = _as_utc(datetime.fromisoformat(str(header["until"])))
+    except (TypeError, ValueError) as exc:
+        raise ExportRefused(
+            "bad_window", "That mailbox export does not say which period it covers."
+        ) from exc
+    if covered_from > _as_utc(since) or covered_to < _as_utc(until):
+        raise ExportRefused(
+            "window_too_small",
+            "That mailbox export does not cover the minutes after the application was sent.",
+        )
+    return dict(header)
+
+
+def _as_utc(moment: datetime) -> datetime:
+    return moment if moment.tzinfo else moment.replace(tzinfo=timezone.utc)
 
 
 @dataclass
@@ -248,6 +351,17 @@ class Code:
 
 CODE_PATTERN = r"\b([A-Z0-9]{6,8})\b"
 
+#: Which sender domains belong to which application system. Used to check a
+#: code really came from the system that asked for it.
+ATS_MAIL_DOMAINS: dict[str, tuple[str, ...]] = {
+    "greenhouse": ("greenhouse.io", "greenhouse-mail.io"),
+    "lever": ("lever.co", "hire.lever.co"),
+    "ashby": ("ashbyhq.com",),
+    "workday": ("myworkday.com", "workday.com", "myworkdayjobs.com"),
+    "smartrecruiters": ("smartrecruiters.com",),
+    "workable": ("workable.com",),
+}
+
 
 def find_code(
     *,
@@ -256,15 +370,36 @@ def find_code(
     recipient: str,
     submitted_at: datetime,
     window_minutes: int = 10,
+    require_header: bool = True,
 ) -> Code | None:
     """The newest verification code inside the window, or ``None``.
 
+    Four rules, all of which must hold: the sender belongs to the application
+    system, the recipient is the address used on the form, the message landed
+    inside the window after the submit, and the newest match wins.
+
+    Before any of that, the export's own header is checked
+    (:func:`check_export_header`) unless ``require_header`` is off. Without it,
+    "no code found" and "nobody looked" are the same answer, and the second one
+    must never be treated as the first.
+
     Reset mail is skipped. No match means no code: the application waits for the
-    user instead of asking the site for another one.
+    user rather than asking the site for another one.
     """
     import re
 
     until = submitted_at + timedelta(minutes=window_minutes)
+    header_of = getattr(reader, "export_header", None)
+    header = header_of() if callable(header_of) else None
+    if header is not None:
+        check_export_header(header, recipient=recipient, since=submitted_at, until=until)
+    elif require_header:
+        raise ExportRefused(
+            "no_header",
+            "That mailbox gave me no record of what it searched, so I will not treat an empty "
+            "result as proof that nothing arrived.",
+        )
+
     domains = {d.lower() for d in sender_domains}
     messages = sorted(
         reader.messages(since=submitted_at, until=until, recipient=recipient),
@@ -283,6 +418,59 @@ def find_code(
         if match:
             return Code(match.group(1), message.message_id)
     return None
+
+
+@runtime_checkable
+class EmailCodeProvider(Protocol):
+    """Where a verification code comes from. One per mailbox backend."""
+
+    name: str
+
+    def find_code(
+        self, *, ats: str, recipient: str, submitted_at: datetime, window_minutes: int = 10
+    ) -> Code | None: ...
+
+
+@dataclass
+class MailboxCodeProvider:
+    """A code provider over any :class:`MailReader`.
+
+    Each application system is switched on separately
+    (``verify.email_codes.<system>``, all **off** by default). That is how a
+    risky path is rolled out one system at a time instead of everywhere at once.
+    """
+
+    reader: MailReader
+    enabled_for: frozenset[str] = frozenset()
+    name: str = "mailbox"
+    require_header: bool = True
+
+    @classmethod
+    def from_config(cls, config: Config, reader: MailReader) -> "MailboxCodeProvider":
+        switched_on = {
+            name
+            for name, value in (config.section("verify.email_codes") or {}).items()
+            if bool(value)
+        }
+        return cls(reader=reader, enabled_for=frozenset(switched_on))
+
+    def find_code(
+        self, *, ats: str, recipient: str, submitted_at: datetime, window_minutes: int = 10
+    ) -> Code | None:
+        family = (ats or "").strip().lower()
+        if family not in self.enabled_for:
+            return None  # switched off: the application waits for the user
+        domains = ATS_MAIL_DOMAINS.get(family)
+        if not domains:
+            return None
+        return find_code(
+            reader=self.reader,
+            sender_domains=domains,
+            recipient=recipient,
+            submitted_at=submitted_at,
+            window_minutes=window_minutes,
+            require_header=self.require_header,
+        )
 
 
 # -- the metric ----------------------------------------------------------

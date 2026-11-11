@@ -94,7 +94,31 @@ DEFAULTS: dict[str, Any] = {
         "park_when_unanswerable": True,
     },
     "permissions": {name: False for name in PERMISSIONS},
-    "verify": {"receipt_window_minutes": 10, "mail_reader": "none", "mail_export_dir": ""},
+    "verify": {
+        "receipt_window_minutes": 10,
+        "mail_reader": "none",
+        "mail_export_dir": "",
+        # Reading the short code some application systems email. Off for every
+        # system until the user says otherwise, so a risky path is switched on
+        # one system at a time.
+        "email_codes": {
+            "greenhouse": False,
+            "lever": False,
+            "ashby": False,
+            "workday": False,
+            "smartrecruiters": False,
+            "workable": False,
+        },
+    },
+    # The hourly health check. Nothing here changes anything; it only notices.
+    "watch": {
+        "idle_minutes": 60,
+        "stuck_minutes": 40,
+        "unconfirmed_rate": 0.4,
+        "unconfirmed_minimum": 5,
+        "quiet_hours_start": "",
+        "quiet_hours_end": "",
+    },
     "models": {
         "screen": "claude-haiku",
         "review": "claude-opus",
@@ -129,6 +153,9 @@ DEFAULTS: dict[str, Any] = {
         "digest_time": "08:00",
         "report_rejections": False,
         "immediate_alerts": [],
+        # Reminders about a test or an interview: once in the morning, once in
+        # the evening, so a deadline is never a surprise.
+        "reminder_times": {"morning": "09:30", "evening": "20:00"},
     },
     "tracker": {"backups_to_keep": 20, "lock_timeout_seconds": 30},
 }
@@ -358,10 +385,28 @@ def _problems(data: dict[str, Any]) -> list[str]:
         if not isinstance(value, bool):
             out.append(f"'permissions.{action}' should be true or false (found {value!r}).")
 
-    digest_time = str(cfg.get("notifications.digest_time", ""))
-    if not re.match(r"^([01]\d|2[0-3]):[0-5]\d$", digest_time):
+    for key in (
+        "notifications.digest_time",
+        "notifications.reminder_times.morning",
+        "notifications.reminder_times.evening",
+    ):
+        value = str(cfg.get(key, ""))
+        if not re.match(r"^([01]\d|2[0-3]):[0-5]\d$", value):
+            out.append(f"'{key}' should be a time like '08:00' (found {value!r}).")
+
+    for key in ("watch.quiet_hours_start", "watch.quiet_hours_end"):
+        value = str(cfg.get(key, "") or "")
+        if value and not re.match(r"^([01]\d|2[0-3]):[0-5]\d$", value):
+            out.append(f"'{key}' should be blank or a time like '22:00' (found {value!r}).")
+
+    for name, value in cfg.section("verify.email_codes").items():
+        if not isinstance(value, bool):
+            out.append(f"'verify.email_codes.{name}' should be true or false (found {value!r}).")
+
+    rate = cfg.get("watch.unconfirmed_rate")
+    if not isinstance(rate, (int, float)) or isinstance(rate, bool) or not 0 < float(rate) <= 1:
         out.append(
-            f"'notifications.digest_time' should be a time like '08:00' (found {digest_time!r})."
+            f"'watch.unconfirmed_rate' should be a fraction between 0 and 1 (found {rate!r})."
         )
 
     reader = cfg.get("verify.mail_reader")

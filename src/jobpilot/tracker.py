@@ -88,6 +88,60 @@ class UpsertResult:
         return self.added + self.updated
 
 
+#: Why a batch was refused, in words a user can act on.
+REFUSAL_WORDS = {
+    "missing_job_id": "I could not tell which job it was about",
+    "unknown_status": "it used a state I do not recognise",
+    "batch_verdict": "one decision for a whole batch is not evidence",
+    "verdict_missing": "it had no decision recorded for that job",
+    "skip_without_reason": "it would skip a job without saying why",
+    "skip_without_evidence": "it would skip a job without quoting the posting",
+    "receipt_missing": "it would call an application confirmed with no confirmation",
+    "already_applied": "that job has already been applied to",
+    "reapply_needs_approval": "you skipped that job, so reopening it needs your say-so",
+    "protected_row": "that application is already out, so I will not rewrite it",
+    "claimed_elsewhere": "something else is already working on that job",
+    "force_without_reason": "an override needs a reason recorded",
+}
+
+
+@dataclass
+class Plan:
+    """What a batch would do to the record, before anything is written."""
+
+    adds: list[str] = field(default_factory=list)
+    changes: list[tuple[str, list[str]]] = field(default_factory=list)  # (job_id, fields)
+    unchanged: list[str] = field(default_factory=list)
+    refused: list[tuple[str, str]] = field(default_factory=list)  # (job_id, code)
+
+    @property
+    def would_write(self) -> int:
+        return len(self.adds) + len(self.changes)
+
+    @property
+    def clean(self) -> bool:
+        return not self.refused
+
+    def words(self) -> str:
+        """The plan as a person would read it."""
+        from .ui import plural
+
+        parts = []
+        if self.adds:
+            parts.append(f"add {plural(len(self.adds), 'job')}")
+        if self.changes:
+            parts.append(f"update {plural(len(self.changes), 'job')}")
+        if self.unchanged:
+            parts.append(f"leave {len(self.unchanged)} as they are")
+        head = "I would " + (", ".join(parts) if parts else "change nothing") + "."
+        if not self.refused:
+            return head
+        lines = [head, f"{plural(len(self.refused), 'change')} I will not make:"]
+        for job_id, code in self.refused:
+            lines.append(f"  - {REFUSAL_WORDS.get(code, code)}")
+        return "\n".join(lines)
+
+
 @dataclass
 class Tracker:
     path: Path
@@ -426,6 +480,87 @@ class Tracker:
             if batch:
                 existing["batch"] = batch
         return changed
+
+    # -- planning a batch before writing it -------------------------------
+    def plan(
+        self,
+        updates: Iterable[dict],
+        *,
+        require_verdict: bool = False,
+        force: bool = False,
+    ) -> "Plan":
+        """Work out what a batch *would* do, without writing anything.
+
+        Every guard runs exactly as it does on a real write, so a plan with no
+        refusals is a batch that will go through. This exists because the useful
+        order is always the same: look at the change, then make it.
+        """
+        plan = Plan()
+        rows = self.read()
+        index = {str(r.get("job_id")): r for r in rows if r.get("job_id")}
+        identity_index: dict[str, dict] = {}
+        for row in rows:
+            for key in row_identities(row):
+                identity_index.setdefault(key, row)
+
+        for update in updates:
+            job_id = str(update.get("job_id") or "")
+            if not job_id:
+                plan.refused.append(("", "missing_job_id"))
+                continue
+            if "status" in update and normalize_status(update["status"]) not in STATUSES:
+                plan.refused.append((job_id, "unknown_status"))
+                continue
+            existing = index.get(job_id) or next(
+                (identity_index[k] for k in row_identities(update) if k in identity_index), None
+            )
+            refusal = self._guard(existing, update, require_verdict=require_verdict, force=force)
+            if refusal:
+                plan.refused.append((job_id, refusal))
+            elif existing is None:
+                plan.adds.append(job_id)
+            else:
+                changed = sorted(
+                    key
+                    for key, value in update.items()
+                    if key != "job_id" and existing.get(key) != value
+                )
+                if changed:
+                    plan.changes.append((job_id, changed))
+                else:
+                    plan.unchanged.append(job_id)
+        return plan
+
+    def commit(
+        self,
+        updates: Iterable[dict],
+        *,
+        caller: str,
+        require_verdict: bool = False,
+        force: bool = False,
+        force_reason: str = "",
+        batch: str = "",
+        dry_run: bool = True,
+    ) -> tuple["Plan", UpsertResult | None]:
+        """Plan a batch and, only if asked, write it.
+
+        ``dry_run`` defaults to **True**, so a caller that forgets to decide
+        gets the safe answer. The plan comes back either way; the write result
+        comes back only when a write happened.
+        """
+        updates = list(updates)
+        plan = self.plan(updates, require_verdict=require_verdict, force=force)
+        if dry_run:
+            return plan, None
+        result = self.upsert(
+            updates,
+            caller=caller,
+            require_verdict=require_verdict,
+            force=force,
+            force_reason=force_reason,
+            batch=batch,
+        )
+        return plan, result
 
     # -- convenience operations -------------------------------------------
     def claim(self, job_id: str, lane: str) -> bool:
