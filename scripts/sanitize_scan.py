@@ -14,7 +14,8 @@ It fails on:
 * a ``{{PLACEHOLDER}}`` in a settings file that is not a ``.example.`` template
   (which means a real settings file was committed, or a template was renamed
   without being filled in);
-* the maintainer's own words, anywhere except the public repository URL.
+* the maintainer's own words, anywhere except the public repository URL;
+* **any non-English script** - see :data:`NON_ENGLISH` below.
 
 Usage: ``scripts/sanitize_scan.py [repo-root]``
 """
@@ -36,14 +37,44 @@ PERSONAL_WORDS = ("yuan", "yunchen", "ethan", "columbia")
 
 PUBLIC_REPO_URL = "github.com/yuanyunchen/multi-agent-job-apply"
 
+#: Everything committed here is English, and this is what enforces it.
+#:
+#: The project is read by people who will not share the author's first
+#: language, and by agents whose prompts are assembled from these files. A
+#: sentence in another script is unreadable to half the audience and invisible
+#: to a reviewer who cannot read it - which is exactly where an instruction
+#: nobody intended survives for months.
+#:
+#: The ranges, in order: CJK symbols and punctuation, Hiragana, Katakana, CJK
+#: unified ideographs extension A, CJK unified ideographs, Hangul Jamo, Hangul
+#: syllables, and halfwidth/fullwidth forms.
+#:
+#: Written as escapes rather than as the characters themselves, so this
+#: repository contains no such character anywhere - including in the rule that
+#: looks for them. That makes the claim checkable with a plain search.
+NON_ENGLISH = re.compile(
+    "["
+    "\u3000-\u303f"  # CJK symbols and punctuation
+    "\u3040-\u309f"  # Hiragana
+    "\u30a0-\u30ff"  # Katakana
+    "\u3400-\u4dbf"  # CJK unified ideographs, extension A
+    "\u4e00-\u9fff"  # CJK unified ideographs
+    "\u1100-\u11ff"  # Hangul Jamo
+    "\uac00-\ud7af"  # Hangul syllables
+    "\uff00-\uffef"  # halfwidth and fullwidth forms
+    "]"
+)
+
 ALLOWED_EMAIL_DOMAINS = {"example.test", "example.com", "example.org", "example.invalid"}
 ALLOWED_VENDOR_DOMAINS = {"anthropic.com", "greenhouse.io", "acme-robotics.example"}
 
-#: The two files whose whole content is the patterns themselves. Scanning them
-#: for their own rules would fail by definition.
+#: The files whose content *is* the patterns. Scanning them for their own rules
+#: would fail by definition. The English-only rule still applies to them, and
+#: they pass it by writing escapes rather than characters.
 RULE_FILES = {
     "scripts/sanitize_scan.py",
     "tests/test_repo_hygiene.py",
+    "tests/test_templates.py",
 }
 
 #: Files allowed to write an absolute path, because they talk *about* paths:
@@ -63,6 +94,13 @@ PATH_ALLOWED = {
 }
 
 
+#: Extensions that are never text, so never worth decoding.
+BINARY_SUFFIXES = {
+    ".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico", ".pdf", ".zip", ".gz",
+    ".whl", ".so", ".dylib", ".pyc", ".woff", ".woff2", ".ttf", ".mp4", ".webm",
+}
+
+
 def files(root: Path) -> list[Path]:
     out: list[Path] = []
     for pattern in SEARCHED:
@@ -75,8 +113,53 @@ def files(root: Path) -> list[Path]:
     return sorted(set(out))
 
 
-def scan(root: Path) -> list[str]:
+def text_files(root: Path) -> list[Path]:
+    """Every text file, whatever it is called.
+
+    Broader than :func:`files` on purpose: the English-only rule applies to
+    anything a person or an agent reads, not only to the handful of extensions
+    the other rules care about.
+    """
+    out: list[Path] = []
+    for path in root.rglob("*"):
+        if not path.is_file() or path.is_symlink():
+            continue
+        if any(part in SKIP_DIRS for part in path.relative_to(root).parts):
+            continue
+        if path.suffix.lower() in BINARY_SUFFIXES:
+            continue
+        out.append(path)
+    return sorted(out)
+
+
+def scan_english_only(root: Path) -> list[str]:
+    """Every text file is English. No exemptions, including the rule files.
+
+    The rule files escape these characters rather than writing them, so they
+    pass their own rule - which is the point: the claim "there is none of this
+    anywhere" should be true of the whole repository, checkable with a plain
+    search, with no file anybody has to take on trust.
+    """
     problems: list[str] = []
+    for path in text_files(root):
+        try:
+            text = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+        for number, line in enumerate(text.splitlines(), start=1):
+            match = NON_ENGLISH.search(line)
+            if match:
+                point = f"U+{ord(match.group(0)):04X}"
+                problems.append(
+                    f"{path.relative_to(root)}:{number}: non-English character {point} "
+                    "(everything here is English)"
+                )
+                break  # one report per file is enough to act on
+    return problems
+
+
+def scan(root: Path) -> list[str]:
+    problems: list[str] = scan_english_only(root)
     checked = 0
     for path in files(root):
         relative = str(path.relative_to(root))
