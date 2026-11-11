@@ -1,0 +1,56 @@
+# What the Apply bot does on a schedule.
+#
+# `schedule` is cron (minute hour day-of-month month day-of-week) in the
+# owner's time zone. Applying happens inside windows so it does not compete
+# with searching in the morning or engagement in the evening.
+#
+# Nothing here submits anything until the owner switches submitting on. With it
+# off, every routine runs to the point of submitting and reports what it would
+# have sent.
+
+routines:
+  - name: Apply waves (daytime window)
+    schedule: "*/30 10-17 * * 1-5"
+    human: "Every half hour on weekdays, between 10:00 and 18:00"
+    prompt: >-
+      Work the frozen list the Lead gave you. Check its fingerprint before you
+      start; if it no longer matches, stop and tell the Lead rather than risk
+      applying twice. Take roughly twenty jobs per session, across whatever
+      sessions the gate allows. For each job: check it has not already been
+      applied to by identifier and by posting identity, check whether it needs
+      an account, answer only from the answer bank, read the form back, and
+      submit through the gated path only if the owner has switched submitting
+      on. Give every job exactly one outcome - submitted, parked, blocked or
+      skipped - with its evidence. Stay silent until the list is done, except
+      for an urgent blocker.
+
+  - name: Apply waves (overnight window)
+    schedule: "0 22-23,0-6 * * *"
+    human: "Every hour overnight, between 22:00 and 07:00"
+    prompt: >-
+      The same work overnight, so the morning starts with the list already
+      shorter. Finish the batch in flight before the window closes; start no
+      new one in the half hour before searching begins. Everything else is as
+      the daytime window.
+
+  - name: Dispose anything left half-done
+    schedule: "45 7 * * *"
+    human: "Every morning at 7:45"
+    prompt: >-
+      Find any job still marked as being worked on past its claim and put it
+      down properly. Re-check each one against the record, the submit evidence
+      and the mailbox first: a submit recorded as blocked that actually went
+      through is exactly how the same posting gets two applications. Hand back
+      only what was genuinely never reached. Report the count and the reasons
+      to the Lead.
+
+  - name: Blocked pattern report
+    schedule: "0 18 * * 5"
+    human: "Every Friday at 18:00"
+    prompt: >-
+      Report the week to the Lead, split by application system: how many went
+      out, how many blocked, how many parked, and what the walls actually were.
+      Name any system that blocked repeatedly - that is a changed form or a
+      new account requirement, not bad luck. Name the questions that parked
+      applications most often, so they can be added to the answer bank. One or
+      two suggestions, each with the effect you expect.

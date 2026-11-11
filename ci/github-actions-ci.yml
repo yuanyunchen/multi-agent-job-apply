@@ -40,8 +40,11 @@ jobs:
           JOBPILOT_TEST: "1"
         run: jobpilot doctor
 
-      - name: Sanitize scan
+      - name: Sanitize scan (personal data, machine paths, English only)
         run: python scripts/sanitize_scan.py
+
+      - name: Bot templates are up to date
+        run: python scripts/build_bot_templates.py --check
 
   migration-check:
     runs-on: ubuntu-latest

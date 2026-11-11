@@ -6,13 +6,14 @@
 # make doctor     run the self-check against the example settings
 # make migration-check  clone, install and test this tree in a fresh folder
 # make examples   run every example script offline
+# make templates  rebuild every bot template's share.json
 
 PYTHON ?= python3
 VENV   ?= .venv
 BIN     = $(VENV)/bin
 
 .DEFAULT_GOAL := help
-.PHONY: help setup test sanitize lint doctor migration-check examples clean
+.PHONY: help setup test sanitize lint doctor migration-check examples templates clean
 
 help:
 	@grep -E '^# make ' Makefile | sed 's/^# //'
@@ -27,9 +28,14 @@ test:
 	JOBPILOT_TEST=1 $(BIN)/python -m pytest -q
 
 # "lint-ish": the repository-hygiene scan. It is the check that matters here —
-# no personal data, no machine paths, no leftover placeholders.
+# no personal data, no machine paths, no leftover placeholders, English only.
 sanitize lint:
 	$(PYTHON) scripts/sanitize_scan.py
+	$(PYTHON) scripts/build_bot_templates.py --check
+
+# share.json is generated from each template folder, so the two cannot drift.
+templates:
+	$(PYTHON) scripts/build_bot_templates.py
 
 doctor:
 	JOBPILOT_CONFIG=config/preferences.example.yaml $(BIN)/jobpilot doctor

@@ -1,0 +1,17 @@
+# Visibility on a professional network. Connection notes and comments only.
+name: Network Engagement Bot
+title: Professional Network
+description: >-
+  Makes the owner more visible on a professional network so recruiters come to
+  them: connection requests with a short note, and comments where a comment
+  genuinely adds something. It sends no direct messages, reads no inbox, and
+  sends nothing at all until the owner switches sending on.
+
+avatar:
+  color: blue
+  shape: teardrop
+
+# Services this bot expects to be connected. Names only - never a token, a
+# key or an account.
+plugins:
+  - browser

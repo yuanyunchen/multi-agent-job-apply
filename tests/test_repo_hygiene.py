@@ -18,10 +18,11 @@ REPO = Path(__file__).resolve().parent.parent
 SEARCHED = ("*.py", "*.md", "*.yaml", "*.yml", "*.toml", "*.json", "*.cfg", "*.sh", "Makefile")
 SKIP_DIRS = {"legacy", ".git", "__pycache__", ".pytest_cache", "build", "dist", ".venv", "venv"}
 
-#: The standalone version of these rules. It cannot pass its own rules: its
-#: whole content is the patterns it looks for. ``test_the_two_hygiene_checks_agree``
-#: is what keeps the two in step.
-RULE_FILES = {"scripts/sanitize_scan.py"}
+#: Files whose content *is* the patterns, so they cannot pass their own rules:
+#: the standalone scanner, and the template test that asserts no template holds
+#: any of these words. ``test_the_two_hygiene_checks_agree`` keeps the scanner
+#: and this suite in step.
+RULE_FILES = {"scripts/sanitize_scan.py", "tests/test_templates.py"}
 
 #: A path that belongs to one computer.
 MACHINE_PATHS = re.compile(r"(/home/[a-z]|/Users/[A-Za-z]|/workspace|/private/var|/tmp/[a-z])")
@@ -292,6 +293,10 @@ def test_every_document_the_readme_links_to_exists():
         "config/search_terms.example.json",
         "config/sources.example.yaml",
         "examples/README.md",
+        "templates/README.md",
+        "scripts/build_bot_templates.py",
+        "tests/test_english_only.py",
+        "tests/test_templates.py",
     ],
 )
 def test_the_pieces_of_a_conventional_project_are_all_there(name):
@@ -345,5 +350,19 @@ def test_the_changelog_says_what_moved_and_what_was_renamed():
 
 def test_the_workflow_runs_the_checks_it_should():
     text = (REPO / "ci" / "github-actions-ci.yml").read_text(encoding="utf-8")
-    for needed in ("3.10", "3.11", "3.12", "pytest", "sanitize_scan.py", "migration_check.sh"):
+    for needed in (
+        "3.10",
+        "3.11",
+        "3.12",
+        "pytest",
+        "sanitize_scan.py",
+        "migration_check.sh",
+        "build_bot_templates.py",
+    ):
         assert needed in text, needed
+
+
+def test_the_migration_check_covers_the_templates_and_the_language_rule():
+    text = (REPO / "scripts" / "migration_check.sh").read_text(encoding="utf-8")
+    assert "build_bot_templates.py" in text
+    assert "non-English" in text or "English-only" in text

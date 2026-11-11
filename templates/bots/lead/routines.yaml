@@ -1,0 +1,123 @@
+# What the Lead does on a schedule.
+#
+# `schedule` is cron (minute hour day-of-month month day-of-week) in the
+# owner's time zone. `human` is the same thing in their words. `prompt` is what
+# the bot is actually told when the routine fires.
+#
+# Nothing here sends or submits anything: the sending permissions start off.
+
+routines:
+  - name: Daily search and apply kickoff
+    schedule: "30 7 * * *"
+    human: "Every morning at 7:30"
+    prompt: >-
+      Start the day. Wake the search bots once and tell each which focus to
+      take; do not wake them again later. Check that yesterday's handoffs
+      actually reached the queue, and report the gap if any did not. Set
+      today's queue order: first-choice roles first, newest first. If a
+      teammate is not responding, say so rather than waiting silently. Report
+      nothing to the owner yet - this is internal.
+
+  - name: Progress digest
+    schedule: "0 8 * * 1-5"
+    human: "Every weekday at 8:00"
+    prompt: >-
+      Send the owner one summary for today, and only one - if today's has
+      already gone, stop and say nothing. Follow the progress-digest skill:
+      what needs them (at most three, deadline first), one line of totals, any
+      replies, tests or interviews, the numbers, and a full list attached
+      rather than pasted. Plain words only: no file names, model names,
+      identifiers or internal vocabulary. Do not mention rejections unless the
+      owner asked to see them.
+
+  - name: Apply handoff watchdog
+    schedule: "39 11 * * *"
+    human: "Every day at 11:39"
+    prompt: >-
+      Check the morning's work reached the queue. Compare what search reported
+      with what is actually queued and what is actually in flight. Look for the
+      three things that go wrong quietly: plenty found and nothing queued, a
+      batch handed out that has not moved, and jobs left claimed by a session
+      that died. Re-check anything mid-flight against the record and the
+      mailbox before putting it back in the queue. Report only if something is
+      wrong.
+
+  - name: Test and interview reminders (morning)
+    schedule: "30 9 * * *"
+    human: "Every morning at 9:30"
+    prompt: >-
+      Tell the owner, in chat rather than by email, about any test or interview
+      coming up in the next week: company, role, what it is, when, and the
+      private note on that row if there is one. Soonest first; anything without
+      a date last. Nothing to say means say nothing.
+
+  - name: Test and interview reminders (evening)
+    schedule: "0 20 * * *"
+    human: "Every evening at 20:00"
+    prompt: >-
+      The same reminder again, so a deadline is never a surprise. Mention
+      anything due in the next 48 hours first. If the owner has already
+      confirmed one, drop it from the list.
+
+  - name: Weekly retro
+    schedule: "0 10 * * 1"
+    human: "Every Monday at 10:00"
+    prompt: >-
+      Go over the whole week. Yield by source and by application system, the
+      confirmation rate, which sources produced nothing, which application
+      systems blocked you repeatedly, and where replies actually came from.
+      Re-check whether newer or better models and providers are available for
+      each slot and propose updating the settings if so - never pin an older
+      one. Then bring the owner the handful of preference changes the evidence
+      justifies, each with what it would change and what they would notice.
+      Change nothing without a yes.
+
+  - name: Daily system reflection
+    schedule: "30 18 * * *"
+    human: "Every evening at 18:30"
+    prompt: >-
+      Look back at the day. Read the day's aggregate numbers, the new entries
+      in the improvements log, and anything a teammate acknowledged but has not
+      finished. Log one concrete candidate for handing to a provider: the task,
+      the slot, the saving you expect. Raise any suggestion the numbers justify,
+      each stating its evidence and asking for approval - change no setting
+      yourself. Track which assignments were acknowledged and which were not.
+      Write the entry even on a day when the system was paused and nothing
+      happened: a gap in this record looks exactly like a day nobody looked.
+
+  - name: Watch tick
+    schedule: "0 * * * *"
+    human: "Every hour"
+    prompt: >-
+      A cheap health check that costs no provider calls. Look for: a batch that
+      has stopped moving, how deep the queue really is after the guards, a
+      browser session sitting idle while work waits, and a sign-in that has
+      stopped working. Say only what needs the owner, and say it as something
+      they can act on - never an error code. Everything else goes in the
+      evening reflection.
+
+  - name: Outreach manifest
+    schedule: "40 8 * * 1-5"
+    human: "Every weekday at 8:40"
+    prompt: >-
+      Ask each engagement bot that is switched on for its drafts for today and
+      write them up as one manifest: who each is for, the exact words, and
+      whether it passed its check. Send none of them. A draft that failed its
+      check stays in the manifest with the reason and is never reworded and
+      retried. If the owner has not switched sending on, say plainly that
+      everything is waiting for them.
+
+  # Off by default. Switch it on if the owner wants the team to compare notes
+  # with another person's job-search bot. It shares conventions and counts
+  # only - never a posting, a contact, a document or anything about the owner.
+  - name: Peer job-lead exchange
+    schedule: "0 17 * * 5"
+    human: "Every Friday at 17:00, if switched on"
+    enabled: false
+    prompt: >-
+      Exchange notes with the peer job-search bot the owner has named. Share
+      only conventions and aggregate counts: which sources yielded, which
+      application systems blocked, what changed in your own process. Share no
+      postings, no contacts, no documents, nothing about the owner, and nothing
+      from the application record. Ask the owner before sharing anything not on
+      that list.

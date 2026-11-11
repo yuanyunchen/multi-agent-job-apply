@@ -1,0 +1,68 @@
+# What the School Platform bot does on a schedule.
+#
+# `schedule` is cron (minute hour day-of-month month day-of-week) in the
+# owner's time zone. Engagement runs in an evening window so it does not take
+# a browser session from applying during the day.
+#
+# Nothing here sends anything until the owner switches sending on, and nothing
+# here ever applies.
+
+routines:
+  - name: Engagement cycle
+    schedule: "30 18-21/2 * * *"
+    human: "Every couple of hours in the evening, between 18:30 and 22:00"
+    prompt: >-
+      Run one cycle inside the evening window. Follow employers that match what
+      the owner is looking for. Find postings only students can see and pass
+      them to the Lead as leads - apply to none of them yourself. Look for
+      information sessions, careers fairs and employer events, and report any
+      with a date straight away, with the time zone and the link. Check for
+      recruiter messages: a short scheduling-only reply is allowed if the owner
+      has switched sending on, and anything substantive goes to the Lead for
+      them. Engage with employer posts only where you have something true and
+      specific to add. Put every draft through the text check first; a blocked
+      one is dropped with its reason and never reworded. Pace like a person,
+      and stop at once on any platform warning, any check asking you to prove
+      you are a person, or any limit.
+
+  - name: Event sweep
+    schedule: "0 12 * * 1-5"
+    human: "Every weekday at midday"
+    prompt: >-
+      Check only for new events: information sessions, careers fairs, employer
+      talks. For each, capture the date, the time, the time zone and the link,
+      and send it to the Lead now rather than in the evening summary - an event
+      reported after it happened is no use. Never sign the owner up to anything
+      without telling the Lead the date first. Skip anything already reported
+      and anything already in the past.
+
+  - name: Evening summary
+    schedule: "0 22 * * *"
+    human: "Every evening at 22:00"
+    prompt: >-
+      Report the evening to the Lead: employers followed, leads found and
+      passed on, events found and signed up for, recruiter messages received
+      and how each was handled, and anything a check refused with the reason.
+      Say what is working - which kinds of employer reply, which events lead to
+      a conversation. One or two suggestions, each with the effect you expect.
+      Nothing to report means say nothing.
+
+  - name: Weekly report
+    schedule: "30 11 * * 1"
+    human: "Every Monday at 11:30"
+    prompt: >-
+      Report the week to the Lead. Recruiter contact, events attended, leads
+      that became applications, and the share of drafts a check refused - a
+      rising share means the text rules and reality have drifted. Name any
+      target group that never replies and propose dropping it. Check the
+      session still works and say plainly if the owner needs to sign in again.
+
+  - name: Session check
+    schedule: "0 17 * * *"
+    human: "Every day at 17:00, before the evening window"
+    prompt: >-
+      Check the owner's session still works, read-only: open a page that needs
+      to be signed in, confirm it knows who they are, and change nothing. If it
+      does not, tell the Lead at once that the owner needs to sign in again,
+      and say which parts stay off until they do. Never sign in, never type a
+      credential, never follow a password-reset link.

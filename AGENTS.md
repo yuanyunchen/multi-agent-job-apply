@@ -72,15 +72,41 @@ anyway.
 
 ## 2. Build the agent team
 
-jobpilot is four roles plus optional helpers. Load each role prompt and have
-your host play it; the shared rules live in [`agents/README.md`](agents/README.md).
+jobpilot is seven roles: four always on, three optional helpers. Each one ships
+as a **template** under [`templates/bots/`](templates/bots) — a folder holding
+its profile, the facts it starts out knowing, its skills, its routines and the
+first conversation it has with the user.
 
-| role | prompt | talks to |
-|---|---|---|
-| **Lead** | [`agents/lead.md`](agents/lead.md) | the user — **the only role that does** |
-| **Search** | [`agents/search.md`](agents/search.md) | the Lead |
-| **Apply** | [`agents/apply.md`](agents/apply.md) | the Lead |
-| **Mail** | [`agents/mail.md`](agents/mail.md) | the Lead (read-only) |
+```bash
+jobpilot templates list            # the seven roles
+jobpilot templates show lead       # what one role is, does and runs
+jobpilot templates export lead     # the whole thing as one payload
+```
+
+| role | template | prompt | talks to |
+|---|---|---|---|
+| **Lead** | [`templates/bots/lead`](templates/bots/lead) | [`agents/lead.md`](agents/lead.md) | the user — **the only role that does** |
+| **Search** | [`templates/bots/search`](templates/bots/search) | [`agents/search.md`](agents/search.md) | the Lead |
+| **Apply** | [`templates/bots/apply`](templates/bots/apply) | [`agents/apply.md`](agents/apply.md) | the Lead |
+| **Mail** | [`templates/bots/mail`](templates/bots/mail) | [`agents/mail.md`](agents/mail.md) | the Lead (read-only) |
+| **Network** *(optional)* | [`templates/bots/linkedin`](templates/bots/linkedin) | `src/jobpilot/plugins/linkedin/agent.md` | the Lead |
+| **School platform** *(optional)* | [`templates/bots/handshake`](templates/bots/handshake) | `src/jobpilot/plugins/handshake/agent.md` | the Lead |
+| **Startup platform** *(optional)* | [`templates/bots/yc`](templates/bots/yc) | `src/jobpilot/plugins/yc/agent.md` | the Lead |
+
+**Build each role from its template**, in this order — Lead first, because
+every teammate's first question is which Lead to report to:
+
+1. read `templates/bots/<role>/PROFILE.md` and use it as that role's
+   instructions;
+2. load the facts in `memories.md` as its starting knowledge;
+3. load every `skills/<slug>/SKILL.md`, including `getting-started/SKILL.md`;
+4. take its schedule from `routines.yaml` — cron plus the sentence to say.
+
+The `agents/*.md` prompt for a role is the same behaviour written for a coding
+agent; the template is the same behaviour written for a bot product. If your
+host can import a shared bot, `templates/bots/<role>/share.json` is the whole
+thing in one payload. [`templates/README.md`](templates/README.md) covers both
+routes.
 
 **Map the roles onto whatever your host offers:**
 

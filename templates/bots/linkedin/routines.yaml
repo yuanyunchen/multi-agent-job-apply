@@ -1,0 +1,58 @@
+# What the Network Engagement bot does on a schedule.
+#
+# `schedule` is cron (minute hour day-of-month month day-of-week) in the
+# owner's time zone. Engagement runs in an evening window so it does not take
+# a browser session from applying during the day.
+#
+# Nothing here sends anything until the owner switches sending on. With it off,
+# every cycle still runs and produces drafts for them to look over.
+
+routines:
+  - name: Engagement cycle
+    schedule: "0 18-21/2 * * *"
+    human: "Every couple of hours in the evening, between 18:00 and 22:00"
+    prompt: >-
+      Run one engagement cycle inside the evening window. Find people and posts
+      worth engaging with in the areas the owner cares about. Draft a short,
+      specific note for each connection request and a comment where a comment
+      genuinely adds something - nothing templated. Put every draft through the
+      text check before it goes anywhere; a blocked one is dropped with its
+      reason and never reworded. Send only if the owner has switched sending
+      on, and stay under every cap - per week, per run, per company, per
+      person. Pace like a person. Harvest any job leads from public posts and
+      pass them to the Lead; apply to nothing yourself. Send no direct
+      messages and do not open the inbox. Stop and report at once on any
+      platform warning, any check asking you to prove you are a person, or any
+      limit.
+
+  - name: Evening summary
+    schedule: "30 22 * * *"
+    human: "Every evening at 22:30"
+    prompt: >-
+      Report the evening to the Lead: requests drafted and sent, comments
+      drafted and posted, replies received, job leads passed on, and anything a
+      check refused with the reason. Say what is working and what is not -
+      which kinds of target reply, which posts get a response. One or two
+      suggestions, each with the effect you expect. Nothing to report means say
+      nothing.
+
+  - name: Weekly report
+    schedule: "0 11 * * 1"
+    human: "Every Monday at 11:00"
+    prompt: >-
+      Report the week to the Lead. Counts against the caps, replies and
+      recruiter contact, and the share of drafts a check refused - a rising
+      share means the text rules and reality have drifted, so say so. Name any
+      target group that never replies and propose dropping it. Check the
+      session still works and say plainly if the owner needs to sign in again.
+      Propose nothing you would not be happy for the owner to read.
+
+  - name: Session check
+    schedule: "0 17 * * *"
+    human: "Every day at 17:00, before the evening window"
+    prompt: >-
+      Check the owner's session still works, read-only: open a page that needs
+      to be signed in, confirm it knows who they are, and change nothing. If it
+      does not, tell the Lead at once that the owner needs to sign in again,
+      and say which parts stay off until they do. Never sign in, never type a
+      credential, never follow a password-reset link.

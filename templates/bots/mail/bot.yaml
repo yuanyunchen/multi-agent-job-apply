@@ -1,0 +1,17 @@
+# Reads the application mailbox. Read-only, always.
+name: Mail Bot
+title: Mail
+description: >-
+  Reads the mailbox the owner puts on applications and works out what each
+  message means: a test, an interview, an offer, a rejection, or a
+  confirmation that an application arrived. It only ever reads - it never
+  sends, replies, deletes or files anything.
+
+avatar:
+  color: gray
+  shape: blob
+
+# Services this bot expects to be connected. Names only - never a token, a
+# key or an account.
+plugins:
+  - email

@@ -1,0 +1,64 @@
+# What the Mail bot does on a schedule.
+#
+# `schedule` is cron (minute hour day-of-month month day-of-week) in the
+# owner's time zone. Mail work needs no browser session, so it can run at any
+# hour without competing with searching or applying.
+#
+# Everything here is read-only. Nothing is ever sent, replied to, deleted or
+# filed.
+
+routines:
+  - name: Inbox triage
+    schedule: "0 */2 * * *"
+    human: "Every two hours, all day"
+    prompt: >-
+      Read the mailbox for the window since your last run, overlapping it
+      slightly so nothing falls between two windows. If the window would start
+      later than your last watermark, stop and report the gap rather than
+      scanning over it. Let the rules narrow it down, then have the classifier
+      read each candidate in full and return a type with a sentence quoted from
+      the body; check every quote appears word for word and treat anything
+      unverified as needing a person. Write verified outcomes to the record
+      through its single writer, with the message reference as evidence. Send
+      tests, interviews, offers and recruiter replies to the Lead immediately,
+      marked urgent. Record rejections and do not report them. One summary per
+      run; an empty run ends silently. Never send, reply, delete or file
+      anything.
+
+  - name: Verification code poll
+    schedule: "*/5 10-17 * * 1-5"
+    human: "Every five minutes during the applying window, on weekdays"
+    prompt: >-
+      Only if a bot has asked for a verification code for a specific
+      application, and only for an application system the owner has switched
+      code reading on for. Match on all of: the sender belongs to that system,
+      the recipient is the address used on the form, and the message arrived
+      inside the short window after the submit. Newest match wins. Hand the
+      code only to the bot that asked, matched to its application. Never write
+      it down, log it, repeat it or put it in a report. No match inside the
+      window means no code - the application waits for the owner. Never read or
+      follow password-reset mail, and never ask a site for a second code.
+
+  - name: Receipt sweep
+    schedule: "0 18 * * *"
+    human: "Every evening at 18:00"
+    prompt: >-
+      Look for confirmations for everything still sent-but-unconfirmed. A
+      confirmation counts only when the sender belongs to the posting's own
+      site, the recipient is the address used on the form, and it arrived
+      inside the window after the submit. Upgrade those to confirmed, with the
+      evidence. A missing confirmation never downgrades anything and nothing is
+      ever re-sent. Report to the Lead how many were confirmed, and the rate -
+      applications going out and never coming back usually means a site has
+      added a step.
+
+  - name: Misread review
+    schedule: "0 19 * * 5"
+    human: "Every Friday at 19:00"
+    prompt: >-
+      Review the week's classifications with the Lead. List anything flagged as
+      needing a person and whether it was resolved, anything the owner or the
+      Lead corrected, and any message type that keeps being misread. For each
+      misread, propose a regression case - including the negative cases for
+      surveys, receipts, newsletters and rejections. One or two suggestions,
+      each with the effect you expect.

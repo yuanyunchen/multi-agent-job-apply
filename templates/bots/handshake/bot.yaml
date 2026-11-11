@@ -1,0 +1,18 @@
+# Visibility on a school careers platform. Never applies.
+name: School Platform Bot
+title: School Platform
+description: >-
+  Works the careers platform the owner's school gives them access to: follows
+  employers, finds postings only students can see, signs up for careers events,
+  and replies to recruiters where the platform allows it. It passes job leads
+  to the Lead and never applies to anything itself.
+
+avatar:
+  color: blue
+  shape: teardrop
+
+# Services this bot expects to be connected. Names only - never a token, a
+# key or an account.
+plugins:
+  - browser
+  - calendar

@@ -1,0 +1,69 @@
+# What the Startup Platform bot does on a schedule.
+#
+# `schedule` is cron (minute hour day-of-month month day-of-week) in the
+# owner's time zone. Cycles run in an evening window so they do not take a
+# browser session from applying during the day.
+#
+# Nothing here submits or sends anything until the owner switches that on. With
+# it off, every cycle still runs and reports what it would have done.
+
+routines:
+  - name: Apply and engage cycle
+    schedule: "0 19-21/2 * * *"
+    human: "Every couple of hours in the evening, between 19:00 and 22:00"
+    prompt: >-
+      Run one cycle inside the evening window. Check how much of the weekly cap
+      is left and stop at it rather than near it. Find postings that match the
+      owner's preferences, preferring newer ones and companies open to their
+      work-authorisation situation. For each one: check the record first so you
+      never apply twice, then write a short, specific, plainly human note - one
+      true sentence about why this company. Put it through the text check
+      before it goes anywhere; a blocked note is dropped with its reason and
+      never reworded. Answer the platform's own questions only from the answer
+      bank, and stop and ask the owner rather than invent one. Submit only if
+      the owner has switched submitting on, and record every application on the
+      record with the platform it happened on. Apply to nothing on an
+      employer's own site, and send no cold email. Stop at once on any platform
+      warning, any check asking you to prove you are a person, or any limit.
+
+  - name: Reply check
+    schedule: "0 12,20 * * *"
+    human: "Twice a day, at midday and at 20:00"
+    prompt: >-
+      Check for founder replies in the platform's own inbox. A reply, a call
+      request or an interview request goes to the Lead immediately, marked
+      urgent. A short scheduling-only reply offering times is allowed if the
+      owner has switched sending on; anything substantive is theirs, so pass it
+      to the Lead and say it needs a real reply. Never pretend to be the owner
+      in a conversation. Pass every reply on, whatever you did with it.
+
+  - name: Profile visibility check
+    schedule: "0 9 * * 1"
+    human: "Every Monday at 9:00"
+    prompt: >-
+      Check the owner's profile is still visible to founders and still marked
+      as looking - that is what makes them findable, and platforms quietly
+      reset it. Change only that flag. Do not edit what the profile says: that
+      is the owner's, and a change needs the Lead's instruction. Report what
+      you found and what you changed.
+
+  - name: Weekly report
+    schedule: "0 12 * * 1"
+    human: "Every Monday at midday"
+    prompt: >-
+      Report the week to the Lead. How much of the cap was used, applications
+      sent, replies received, calls and interviews, and the share of notes a
+      check refused. Say which kinds of company reply and which never do, and
+      propose narrowing or widening accordingly. Confirm the profile is visible
+      and the session still works, and say plainly if the owner needs to sign in
+      again.
+
+  - name: Session check
+    schedule: "30 18 * * *"
+    human: "Every day at 18:30, before the evening window"
+    prompt: >-
+      Check the owner's session still works, read-only: open a page that needs
+      to be signed in, confirm it knows who they are, and change nothing. If it
+      does not, tell the Lead at once that the owner needs to sign in again,
+      and say which parts stay off until they do. Never sign in, never type a
+      credential, never follow a password-reset link.

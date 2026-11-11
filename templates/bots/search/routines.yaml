@@ -1,0 +1,57 @@
+# What the Search bot does on a schedule.
+#
+# `schedule` is cron (minute hour day-of-month month day-of-week) in the
+# owner's time zone. The Lead wakes this bot once a day and names a focus; the
+# routine below is what happens if nobody does.
+
+routines:
+  - name: Daily search pass
+    schedule: "35 7 * * *"
+    human: "Every morning at 7:35"
+    prompt: >-
+      Run one search pass in the focus the Lead gave you - broad across
+      employers' own application systems, or deep on the one channel they
+      named. If nobody said, use broad. Read the owner's title list fresh; do
+      not use a copy. Search every term bare and again with each entry-level
+      wording. Keep every row's identity: link, company, title, location, date
+      posted, and the site's own identifier. De-duplicate by cleaned-up link
+      and by the site's identifier, and only flag - never drop - a company and
+      title match. Report a source that returned nothing rather than leaving
+      it out. Do not apply to anything on an employer's own site.
+
+  - name: Screen and commit
+    schedule: "15 8 * * *"
+    human: "Every morning at 8:15"
+    prompt: >-
+      Screen what the pass found and commit it. Run the deterministic rules
+      first - they flag, they never drop. Then have the classifier read each
+      full description and decide, quoting the posting word for word for
+      anything it rules out; check that every quote really appears in the
+      description and throw away any drop that does not, keeping the job.
+      Give each row a tier - first choice, second choice, or never - and a
+      per-job verdict saying where the decision came from. Dry run the write,
+      read the plan, then commit. Finish with one handoff to the Lead, marked
+      urgent: counts per source, what is new against the record, source
+      health, insights, and one or two suggestions.
+
+  - name: Fallback collect
+    schedule: "0 11 * * *"
+    human: "Every day at 11:00, only if the morning found nothing"
+    prompt: >-
+      Only if this morning's pass produced nothing at all. Collect from the
+      plain sources that need no model and no session, screen them the same way
+      as any other row, and hand them over. Never commit without a per-job
+      verdict just because the day was thin. If the pass produced nothing
+      because a source has changed shape or a sign-in has gone, say so to the
+      Lead - that is the finding, not the empty result.
+
+  - name: Source health report
+    schedule: "0 18 * * 5"
+    human: "Every Friday at 18:00"
+    prompt: >-
+      Report the week by source to the Lead: how many each one found, how many
+      survived de-duplication, how many were new, and how many became
+      applications. Name any source that produced nothing all week and say
+      what retiring it would free up. Name any source that changed shape or
+      started rate-limiting. One or two suggestions, each with the effect you
+      expect.

@@ -496,6 +496,31 @@ def _run_apply(config: Config, renderer: Renderer, args: argparse.Namespace) -> 
     return 0
 
 
+def cmd_templates(args: argparse.Namespace) -> int:
+    """The bot templates: the team, ready to hand to a bot product.
+
+    Reads only, and needs no settings — somebody looking at the templates has
+    not set anything up yet, which is rather the point of looking.
+    """
+    from . import templates
+
+    if args.action == "list":
+        print(templates.summary())
+        return 0
+
+    if not args.role:
+        raise JobpilotError(
+            f"Tell me which role to {args.action}.",
+            hint=f"For example: jobpilot templates {args.action} lead",
+        )
+    template = templates.load(args.role)
+    if args.action == "export":
+        print(template.share_json())
+        return 0
+    print(template.words())
+    return 0
+
+
 def cmd_doctor(args: argparse.Namespace) -> int:
     """Check everything without touching a single account."""
     from .accounts import AccountRegistry
@@ -670,6 +695,11 @@ def build_parser() -> argparse.ArgumentParser:
         decision = sub.add_parser(verb, help=helptext)
         decision.add_argument("id", help="the name I gave the suggestion")
         decision.set_defaults(func=cmd_decide)
+
+    bots = sub.add_parser("templates", help="the team, one template per role")
+    bots.add_argument("action", choices=["list", "show", "export"], nargs="?", default="list")
+    bots.add_argument("role", nargs="?", default="", help="which role, for show and export")
+    bots.set_defaults(func=cmd_templates)
 
     routines = sub.add_parser("routines", help="the timetable")
     routines.add_argument("action", choices=["list", "run-due"], nargs="?", default="list")

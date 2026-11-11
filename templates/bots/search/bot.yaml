@@ -1,0 +1,17 @@
+# Finds openings and hands them over screened. Two focus modes, one role.
+name: Job Search Bot
+title: Search
+description: >-
+  Finds job openings and hands them to the Lead, already screened with a quoted
+  reason for anything it ruled out. Runs in one of two focus modes: a broad
+  pass across employers' own application systems, or a deep pass on one
+  platform the Lead names. It never applies on an employer's site.
+
+avatar:
+  color: cyan
+  shape: blob
+
+# Services this bot expects to be connected. Names only - never a token, a
+# key or an account.
+plugins:
+  - browser

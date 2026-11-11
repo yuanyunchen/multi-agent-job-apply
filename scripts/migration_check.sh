@@ -6,8 +6,9 @@
 #
 # It clones this working tree into a temporary directory with a DIFFERENT
 # folder name, builds a fresh virtual environment, installs the project,
-# runs the self-check, runs the whole suite, and scans the clone for machine
-# paths.
+# runs the self-check, runs the whole suite, scans the clone for machine paths
+# and non-English text, and rebuilds the bot templates to prove they are not
+# stale.
 #
 # Usage: scripts/migration_check.sh [source-repo] [--keep]
 #
@@ -43,10 +44,10 @@ trap cleanup EXIT INT TERM
 
 step() { printf '\n=== %s\n' "$1"; }
 
-step "1/6 clone $source -> $clone"
+step "1/7 clone $source -> $clone"
 git clone --quiet "$source" "$clone"
 
-step "2/6 fresh virtual environment"
+step "2/7 fresh virtual environment"
 if [ "${JOBPILOT_PIP_SYSTEM_SITE:-0}" = "1" ]; then
     "$python" -m venv --system-site-packages "$clone/.venv"
 else
@@ -54,10 +55,10 @@ else
 fi
 bin="$clone/.venv/bin"
 
-step "3/6 pip install -e .[dev]"
+step "3/7 pip install -e .[dev]"
 "$bin/python" -m pip install --quiet --disable-pip-version-check -e "$clone[dev]"
 
-step "4/6 jobpilot doctor (offline, example settings, from an unrelated folder)"
+step "4/7 jobpilot doctor (offline, example settings, from an unrelated folder)"
 # Run from the temporary root, not the clone, to prove nothing depends on the
 # current directory.
 cd "$work"
@@ -70,11 +71,14 @@ JOBPILOT_CONFIG="$clone/config/preferences.example.yaml" \
     JOBPILOT_TEST=1 \
     "$bin/jobpilot" routines list --technical | tail -3
 
-step "5/6 the whole test suite, inside the clone"
+step "5/7 the whole test suite, inside the clone"
 cd "$clone"
 JOBPILOT_TEST=1 "$bin/python" -m pytest -q
 
-step "6/6 sanitize scan of the clone"
+step "6/7 sanitize scan of the clone (includes the English-only rule)"
 "$bin/python" "$clone/scripts/sanitize_scan.py" "$clone"
+
+step "7/7 the clone's bot templates are up to date"
+"$bin/python" "$clone/scripts/build_bot_templates.py" --check
 
 printf '\nMigration check passed: the clone installs, checks out and tests clean.\n'
